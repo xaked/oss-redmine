@@ -1,2 +1,2 @@
 FROM redmine:latest
-COPY ./ ./
+COPY --chown=redmine:redmine ./ ./

@@ -1,2 +1,3 @@
-FROM redmine:3.4
+FROM redmine:4
 COPY --chown=redmine:redmine ./ ./
+RUN bundle install

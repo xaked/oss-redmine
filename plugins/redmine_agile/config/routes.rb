@@ -1,7 +1,7 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2017 RedmineUP
+# Copyright (C) 2011-2019 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
@@ -21,17 +21,7 @@
 # See: http://guides.rubyonrails.org/routing.html
 
 resources :projects do
-  resources :agile_queries, :only => [:new, :create]
-  resources :agile_versions, :only => [:index] do
-    post :index, :on => :collection
-  end
-end
-
-resources :agile_versions, :only => [:update, :show] do
-  collection do
-    get 'load'
-    get 'autocomplete'
-  end
+  resources :agile_queries, only: [:new, :create]
 end
 
 resources :issues do

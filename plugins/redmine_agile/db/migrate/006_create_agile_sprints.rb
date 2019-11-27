@@ -1,7 +1,7 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2017 RedmineUP
+# Copyright (C) 2011-2019 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
@@ -17,11 +17,17 @@
 # You should have received a copy of the GNU General Public License
 # along with redmine_agile.  If not, see <http://www.gnu.org/licenses/>.
 
-module RedmineAgile
-  module Hooks
-    class ViewsUsersHook < Redmine::Hook::ViewListener
-      preferences_hook = Redmine::VERSION.to_s > '2.5' ? :view_users_form_preferences : :view_users_form
-      render_on preferences_hook, :partial => 'users/user_color_form'
+class CreateAgileSprints < Rails.version < '5.1' ? ActiveRecord::Migration : ActiveRecord::Migration[4.2]
+  def change
+    create_table :agile_sprints do |t|
+      t.references :project
+      t.string :name, null: false
+      t.text :description
+      t.integer :status, null: false, default: 0
+      t.date :start_date, null: false
+      t.date :end_date, null: false
+
+      t.timestamps null: false
     end
   end
 end

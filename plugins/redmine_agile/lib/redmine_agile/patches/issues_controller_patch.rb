@@ -1,7 +1,7 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2017 RedmineUP
+# Copyright (C) 2011-2019 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
@@ -18,9 +18,16 @@
 # along with redmine_agile.  If not, see <http://www.gnu.org/licenses/>.
 
 module RedmineAgile
-  module Hooks
-    class ViewsProjectsForm < Redmine::Hook::ViewListener
-      render_on :view_projects_form, :partial => "projects/project_color_form"
+  module Patches
+    module IssuesControllerPatch
+      def self.included(base) # :nodoc:
+        base.class_eval do
+        end
+      end
     end
   end
+end
+
+unless IssuesController.included_modules.include?(RedmineAgile::Patches::IssuesControllerPatch)
+  IssuesController.send(:include, RedmineAgile::Patches::IssuesControllerPatch)
 end

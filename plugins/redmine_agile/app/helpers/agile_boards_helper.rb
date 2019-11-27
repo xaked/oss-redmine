@@ -3,7 +3,7 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2017 RedmineUP
+# Copyright (C) 2011-2019 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
@@ -121,8 +121,8 @@ module AgileBoardsHelper
     "#{I18n.t('datetime.distance_in_words.x_days', :count => (hours/24).to_i)}"
   end
 
-  def class_for_closed_issue(issue)
-    return '' if !RedmineAgile.hide_closed_issues_data?
+  def class_for_closed_issue(issue, is_version_board)
+    return '' if !RedmineAgile.hide_closed_issues_data? && !is_version_board
     return 'closed-issue' if issue.closed?
     ''
   end
@@ -139,11 +139,14 @@ module AgileBoardsHelper
     javascript_tag(js_code)
   end
 
+  def estimated_value(issue)
+    return (issue.story_points || 0) if RedmineAgile.use_story_points?
+    issue.estimated_hours.to_f || 0
+  end
+
   def show_checklist?(issue)
     RedmineAgile.use_checklist? && issue.checklists.any? && User.current.allowed_to?(:view_checklists, issue.project)
   rescue
     false
   end
-
-
 end

@@ -402,7 +402,7 @@ Redmine.Checklist = $.klass({
 
     if (this.content) {
       this.$plusButtonMenu = $('#checklist-menu').menu();
-      if (this.$plusButtonMenu.size() > 0) {
+      if (this.$plusButtonMenu.length > 0) {
         this.onMouseEnterLeavePlusButton();
         this.onClickAddChecklistItemMenuButton();
         this.assignTemplateSelectedEvent();

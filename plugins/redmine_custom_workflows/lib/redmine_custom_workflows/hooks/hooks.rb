@@ -1,9 +1,10 @@
 # encoding: utf-8
+# frozen_string_literal: true
 #
 # Redmine plugin for Custom Workflows
 #
-# Copyright Anton Argirov
-# Copyright Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2015-19 Anton Argirov
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -23,17 +24,9 @@ module RedmineCustomWorkflows
 
   class Hooks < Redmine::Hook::ViewListener
 
-    def view_layouts_base_html_head(context)
-      return if defined?(EasyExtensions)
+    def view_layouts_base_html_head(context={})
+      return unless /^(CustomWorkflows|Projects)/.match?(context[:controller].class.name)
       "\n".html_safe + stylesheet_link_tag('custom_workflows.css', plugin: :redmine_custom_workflows)
-    end
-
-    def easy_extensions_javascripts_hook(context={})
-      context[:template].require_asset('tab_override.js')
-    end
-
-    def easy_extensions_stylesheets_hook(context={})
-      context[:template].require_asset('custom_workflows.css')
     end
 
   end

@@ -3,7 +3,7 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2019 RedmineUP
+# Copyright (C) 2011-2021 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
@@ -49,6 +49,7 @@ class AgileChartsControllerTest < ActionController::TestCase
   def setup
     @request.session[:user_id] = 1
     @project = Project.find(1)
+    @issue = @project.issues.first
 
     EnabledModule.create(project: @project, name: 'agile')
 
@@ -59,6 +60,11 @@ class AgileChartsControllerTest < ActionController::TestCase
   def test_get_show
     should_get_show
     should_get_show project_id: @project.identifier
+  end
+
+  def test_get_show_with_period
+    should_get_show({ f: ['issue_id', ''], op: { 'issue_id' => '*' } })
+    should_get_show({ f: ['issue_id', ''], op: { 'issue_id' => '*' }, project_id: @project.identifier })
   end
 
   def test_charts_by_default_params
@@ -114,6 +120,12 @@ class AgileChartsControllerTest < ActionController::TestCase
     end
   end
 
+  def test_render_charts
+    @charts.each do |chart|
+      should_get_render_chart chart: chart, chart_unit: 'issues'
+    end
+  end
+
   def test_charts_with_version
     @charts.each do |chart|
       should_get_render_chart chart: chart, version_id: 2
@@ -140,6 +152,18 @@ class AgileChartsControllerTest < ActionController::TestCase
     )
 
     should_get_render_chart chart: RedmineAgile::Charts::BURNDOWN_CHART, project_id: @project.identifier, version_id: new_version.id
+  end
+
+  def test_get_show_chart_with_open_target_version
+    current_version = @issue.fixed_version
+    @issue.update_attributes(fixed_version: Version.open.first)
+
+    should_get_render_chart project_id: @project.identifier, chart: 'burndown_chart',
+                                                             f: ['version_status'],
+                                                             op: { 'version_status' => '=' },
+                                                             v: { 'version_status' => ['open'] }
+    ensure
+    @issue.update_attributes(fixed_version: current_version)
   end
 
   private

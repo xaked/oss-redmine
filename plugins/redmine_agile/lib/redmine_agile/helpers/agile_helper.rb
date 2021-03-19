@@ -3,7 +3,7 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2019 RedmineUP
+# Copyright (C) 2011-2021 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
@@ -57,7 +57,7 @@ module RedmineAgile
         else
           @query.project = @project if @project
         end
-        save_qeury_attribures_to_session(@query)
+        save_query_attribures_to_session(@query)
       else
         # retrieve from session
         @query = nil
@@ -68,7 +68,7 @@ module RedmineAgile
         @query ||= AgileQuery.find_by_id(session[:agile_query][:id]) if session[:agile_query][:id]
         @query ||= AgileQuery.new(get_query_attributes_from_session)
         @query.project = @project
-        save_qeury_attribures_to_session(@query)
+        save_query_attribures_to_session(@query)
       end
     end
 
@@ -106,8 +106,7 @@ module RedmineAgile
         end
       end
 
-      selected_chart = RedmineAgile::Charts.chart_by_alias(selected) || selected
-      grouped_options_for_select(grouped_options, selected_chart) + options_for_select(container, selected_chart)
+      grouped_options_for_select(grouped_options, selected) + options_for_select(container, selected)
     end
 
     def options_chart_units_for_select(selected = nil)
@@ -140,7 +139,7 @@ module RedmineAgile
       attributes
     end
 
-    def save_qeury_attribures_to_session(query)
+    def save_query_attribures_to_session(query)
       session[:agile_query] = { project_id: query.project_id,
                                 filters: query.filters,
                                 group_by: query.group_by,

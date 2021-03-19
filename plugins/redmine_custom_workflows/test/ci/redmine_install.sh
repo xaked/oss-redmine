@@ -3,8 +3,8 @@
 #
 # Redmine plugin for Custom Workflows
 #
-# Copyright Anton Argirov
-# Copyright Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2015-19 Anton Argirov
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -21,15 +21,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 export REDMINE_GIT_REPO=git://github.com/redmine/redmine.git
-export REDMINE_GIT_TAG=4.0-stable
+export REDMINE_GIT_TAG=4.1-stable
 
 clone()
 {
   # Exit if the cloning fails
   set -e
 
-  rm -rf $PATH_TO_REDMINE
-  git clone -b $REDMINE_GIT_TAG --depth=100 --quiet $REDMINE_GIT_REPO $PATH_TO_REDMINE
+  rm -rf ${PATH_TO_REDMINE}
+  git clone -b ${REDMINE_GIT_TAG} --depth=100 --quiet ${REDMINE_GIT_REPO} ${PATH_TO_REDMINE}
 }
 
 test()
@@ -37,7 +37,7 @@ test()
   # Exit if a test fails
   set -e
 
-  cd $PATH_TO_REDMINE
+  cd ${PATH_TO_REDMINE}
 
   # Run tests within application
   bundle exec rake redmine:plugins:test:units NAME=redmine_custom_workflows RAILS_ENV=test
@@ -49,7 +49,7 @@ uninstall()
   # Exit if the migration fails
   set -e
 
-  cd $PATH_TO_REDMINE
+  cd ${PATH_TO_REDMINE}
 
   # clean up database
   bundle exec rake redmine:plugins:migrate NAME=redmine_custom_workflows VERSION=0 RAILS_ENV=test
@@ -61,14 +61,14 @@ install()
   set -e
 
   # cd to redmine folder
-  cd $PATH_TO_REDMINE
+  cd ${PATH_TO_REDMINE}
   echo current directory is `pwd`
 
   # Create a link to the Custom Workflows plugin
-  ln -sf $PATH_TO_CUSTOM_WORKFLOWS plugins/redmine_custom_workflows
+  ln -sf ${PATH_TO_CUSTOM_WORKFLOWS} plugins/redmine_custom_workflows
 
   # Copy database.yml
-  cp $WORKSPACE/database.yml config/
+  cp ${WORKSPACE}/database.yml config/
 
   # Install gems
   # Not ideal, but at present Travis-CI will not install with xapian enabled:

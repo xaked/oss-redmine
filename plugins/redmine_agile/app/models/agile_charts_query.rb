@@ -1,7 +1,7 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2019 RedmineUP
+# Copyright (C) 2011-2021 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
@@ -39,7 +39,9 @@ class AgileChartsQuery < AgileQuery
   end
 
   def sprint_values
-    AgileSprint.for_project(project).available.map { |s| [s.to_s, s.id.to_s] }
+    return [] unless project
+
+    project.shared_agile_sprints.available.map { |s| [s.to_s, s.id.to_s] }
   end
 
   def default_columns_names
@@ -98,14 +100,14 @@ class AgileChartsQuery < AgileQuery
     self
   end
 
+  def condition_for_status
+    '1=1'
+  end
+
   private
 
   def chart_period_filter(params)
     return {} if (params[:fields] || params[:f]).include?('chart_period')
-
-    if sprint = project.agile_sprints.where(id: params[:sprint_id]).first
-      return { 'chart_period' => { operator: '><', values: [sprint.start_date.to_s, sprint.end_date.to_s] }, 'sprint_id' => { operator: '=', values: [sprint.id] } }
-    end
     { 'chart_period' => { operator: 'm', values: [''] } }
   end
 
@@ -138,7 +140,7 @@ class AgileChartsQuery < AgileQuery
 
     case operator
     when 'w'
-      first_day_of_week = l(:general_first_day_of_week).to_i
+      first_day_of_week = (Setting.start_of_week || l(:general_first_day_of_week)).to_i
       day_of_week = date.cwday
       days_ago = (day_of_week >= first_day_of_week ? day_of_week - first_day_of_week : day_of_week + 7 - first_day_of_week)
       sql_for_field(field, '><t-', [days_ago], Issue.table_name, field)
@@ -148,8 +150,18 @@ class AgileChartsQuery < AgileQuery
     when 'y'
       days_ago = date - date.beginning_of_year
       sql_for_field(field, '><t-', [days_ago], Issue.table_name, field)
+    when '><'
+      sql_for_field(field, '><', adjusted_values(values), Issue.table_name, field)
     else
       sql_for_field(field, operator, values, Issue.table_name, field)
     end
+  end
+
+  def adjusted_values(values)
+    return values unless values.is_a?(Array)
+
+    from = values[0].present? ? Date.parse(values[0]) : Date.today
+    to = values[1].present? ? Date.parse(values[1]) : Date.today
+    [from.to_s, (to < from ? from : to).to_s]
   end
 end

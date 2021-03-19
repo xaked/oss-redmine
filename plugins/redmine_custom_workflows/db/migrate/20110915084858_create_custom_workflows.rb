@@ -2,8 +2,8 @@
 #
 # Redmine plugin for Custom Workflows
 #
-# Copyright Anton Argirov
-# Copyright Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2015-19 Anton Argirov
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -22,12 +22,12 @@
 class CreateCustomWorkflows < ActiveRecord::Migration[4.2]
 
   def change
-    create_table :custom_workflows, :force => true do |t|
+    create_table :custom_workflows, force: true do |t|
       t.references :project
-      t.text :script, :null => true, :default => nil
+      t.text :script, null: true, default: nil
       t.boolean :is_enabled
     end
-    add_index :custom_workflows, [:project_id], :unique => true
+    add_index :custom_workflows, [:project_id], unique: true
   end
 
 end

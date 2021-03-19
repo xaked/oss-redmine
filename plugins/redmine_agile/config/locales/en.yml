@@ -154,6 +154,7 @@ en:
   label_agile_sprint_name: Name
   label_agile_sprint_description: Description
   label_agile_sprint_status: Status
+  label_agile_sprint_sharing: Sharing
   label_agile_sprint_start_date: Start date
   label_agile_sprint_end_date: End date
   label_agile_sprint_new: New sprint
@@ -168,6 +169,7 @@ en:
   label_agile_sprint_duration_week_4: 4 weeks
   label_agile_sprint_errors_crossed: Sprint dates are cross another existed sprint
   label_agile_sprint_errors_end_more_start: End date should be more than start date
+  label_agile_sprint_errors_open_issues: Sprint with open issues can be closed
   label_agile_sprint_default_chart: Сhart
   label_agile_sprint_chart_units: Estimation
   label_agile_chart_for_sprint: "For sprint: %{sprint}"
@@ -218,3 +220,11 @@ en:
   label_agile_no_sprint_issues: Issues without sprint
   field_closed_sprints: Closed sprints
   field_closed_versions: Closed versions
+
+  label_agile_sprint_sharing_none: Not shared
+  label_agile_sprint_sharing_descendants: With subprojects
+  label_agile_sprint_sharing_hierarchy: With project hierarchy
+  label_agile_sprint_sharing_tree: With project tree
+  label_agile_sprint_sharing_system: With all projects
+
+

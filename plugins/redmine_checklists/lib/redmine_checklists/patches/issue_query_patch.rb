@@ -32,6 +32,7 @@ module RedmineChecklists
   end
 end
 
-unless IssueQuery.included_modules.include?(RedmineChecklists::Patches::IssueQueryPatch)
+if (ActiveRecord::Base.connection.tables.include?('queries') rescue false) &&
+   IssueQuery.included_modules.exclude?(RedmineChecklists::Patches::IssueQueryPatch)
   IssueQuery.send(:include, RedmineChecklists::Patches::IssueQueryPatch)
 end

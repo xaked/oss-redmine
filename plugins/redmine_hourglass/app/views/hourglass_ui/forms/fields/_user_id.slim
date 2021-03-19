@@ -1,0 +1,6 @@
+.form-field
+  .label
+    = form.label :user_id
+  .input
+    - project = entry && entry.respond_to?(:project) && entry.project || nil
+    = form.select :user_id, options_from_collection_for_select(user_collection(project), :id, :name, entry.user_id || User.current.id), { include_blank: true }, disabled: local_assigns[:disabled], required: local_assigns[:required]

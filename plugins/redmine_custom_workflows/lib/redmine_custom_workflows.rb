@@ -1,9 +1,10 @@
 # encoding: utf-8
+# frozen_string_literal: true
 #
 # Redmine plugin for Custom Workflows
 #
-# Copyright Anton Argirov
-# Copyright Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2015-19 Anton Argirov
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -29,6 +30,7 @@ require 'redmine_custom_workflows/errors/workflow_error'
 require 'redmine_custom_workflows/patches/attachment_patch'
 require 'redmine_custom_workflows/patches/group_patch'
 require 'redmine_custom_workflows/patches/issue_patch'
+require 'redmine_custom_workflows/patches/issue_relation_patch'
 require 'redmine_custom_workflows/patches/project_patch'
 require 'redmine_custom_workflows/patches/projects_helper_patch'
 require 'redmine_custom_workflows/patches/time_entry_patch'

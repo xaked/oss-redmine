@@ -54,6 +54,7 @@ class ChecklistsController < ApplicationController
     respond_to do |format|
       format.api {
         if @checklist_item.save
+          recalculate_issue_ratio(@checklist_item)
           render :action => 'show', :status => :created, :location => checklist_url(@checklist_item)
         else
           render_validation_errors(@checklist_item)
@@ -66,7 +67,8 @@ class ChecklistsController < ApplicationController
     @checklist_item.safe_attributes = params[:checklist]
     respond_to do |format|
       format.api {
-        if @checklist_item.save
+        if with_issue_journal { @checklist_item.save }
+          recalculate_issue_ratio(@checklist_item)
           render_api_ok
         else
           render_validation_errors(@checklist_item)
@@ -77,12 +79,12 @@ class ChecklistsController < ApplicationController
 
   def done
     (render_403; return false) unless User.current.allowed_to?(:done_checklists, @checklist_item.issue.project)
-    @checklist_item.is_done = params[:is_done] == 'true'
 
-    if @checklist_item.save
-      if (Setting.issue_done_ratio == 'issue_field') && RedmineChecklists.issue_done_ratio?
-        Checklist.recalc_issue_done_ratio(@checklist_item.issue.id)
-        @checklist_item.issue.reload
+    with_issue_journal do
+      @checklist_item.is_done = params[:is_done] == 'true'
+      if @checklist_item.save
+        recalculate_issue_ratio(@checklist_item)
+        true
       end
     end
     respond_to do |format|
@@ -105,5 +107,16 @@ class ChecklistsController < ApplicationController
     @project = @checklist_item.issue.project
   rescue ActiveRecord::RecordNotFound
     render_404
+  end
+
+  def with_issue_journal(&block)
+    return unless yield
+  end
+
+  def recalculate_issue_ratio(checklist_item)
+    if (Setting.issue_done_ratio == 'issue_field') && RedmineChecklists.issue_done_ratio?
+      Checklist.recalc_issue_done_ratio(checklist_item.issue.id)
+      checklist_item.issue.reload
+    end
   end
 end

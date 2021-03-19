@@ -89,7 +89,7 @@ class Redmine::ApiTest::ChecklistsTest < Redmine::ApiTest::Base
   end
 
   def test_put_checklists_1_xml
-    parameters = { :checklist => { :subject => 'Item_UPDATED' } }
+    parameters = { :checklist => { subject: 'Item_UPDATED', is_done: '1' } }
 
     assert_no_difference('Checklist.count') do
       compatible_api_request :put, '/checklists/1.xml', parameters, credentials('admin')

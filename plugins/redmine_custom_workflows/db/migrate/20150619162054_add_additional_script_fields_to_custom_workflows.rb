@@ -2,8 +2,8 @@
 #
 # Redmine plugin for Custom Workflows
 #
-# Copyright Anton Argirov
-# Copyright Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2015-19 Anton Argirov
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -22,11 +22,11 @@
 class AddAdditionalScriptFieldsToCustomWorkflows < ActiveRecord::Migration[4.2]
 
   def change
-    add_column :custom_workflows, :shared_code, :text, :null => true
-    add_column :custom_workflows, :before_add, :text, :null => true
-    add_column :custom_workflows, :after_add, :text, :null => true
-    add_column :custom_workflows, :before_remove, :text, :null => true
-    add_column :custom_workflows, :after_remove, :text, :null => true
+    add_column :custom_workflows, :shared_code, :text, null: true
+    add_column :custom_workflows, :before_add, :text, null: true
+    add_column :custom_workflows, :after_add, :text, null: true
+    add_column :custom_workflows, :before_remove, :text, null: true
+    add_column :custom_workflows, :after_remove, :text, null: true
   end
 
 end

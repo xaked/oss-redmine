@@ -1,5 +1,31 @@
 Changelog for Custom Workflows
-==========================
+==============================
+
+1.0.4 *2020-11-25*
+------------------
+
+    Maintenance release
+    
+* Bug: #193 - Error after install on fresh 4.1.1
+* New: #190 - Execute workflows in order of their positioning
+* New: #189 - Enable custom workflows for issue relations
+* New: #183 - Add link to repo with some examples    
+
+1.0.3 *2020-06-12*
+------------------
+
+    Redmine's look&feel
+        
+* Bug: #168 - Check last version of plugin KO
+* Bug: #167 - Crash when delete project
+
+1.0.2 *2020-01-21*
+------------------
+
+    Redmine 4.1 compatibility
+        
+* Bug: #149 - Error install on Redmine 4.1.0
+* Bug: #141 - Bug when using PT-BR
 
 1.0.1 *2019-09-13*
 ------------------

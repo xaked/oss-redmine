@@ -1,7 +1,7 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2019 RedmineUP
+# Copyright (C) 2011-2021 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
@@ -18,7 +18,6 @@
 # along with redmine_agile.  If not, see <http://www.gnu.org/licenses/>.
 
 class AgileQuery < Query
-  unloadable
   include Redmine::SafeAttributes
 
   attr_reader :truncated
@@ -294,7 +293,7 @@ class AgileQuery < Query
     end
 
     if User.current.logged?
-      add_available_filter 'watcher_id', type: :list, values: [["<< #{l(:label_me)} >>", 'me']]
+      add_available_filter 'watcher_id', type: :list, values: author_values
     end
   end
 
@@ -371,7 +370,7 @@ class AgileQuery < Query
   end
 
   def sql_for_version_status_field(field, operator, value)
-     sql_for_field(field, operator, value, Version.table_name, "status")
+    sql_for_field(field, operator, value, Version.table_name, "status")
   end
 
   def sql_for_has_sub_issues_field(field, operator, value)
@@ -574,7 +573,7 @@ class AgileQuery < Query
         if has_column_name?(:estimated_hours)
           s.instance_variable_set "@estimated_hours_sum", self.issue_count_by_estimated_hours[s.id].to_f
         end
-        if has_column_name?(:story_points)
+        if RedmineAgile.use_story_points? && has_column_name?(:story_points)
           s.instance_variable_set "@story_points", self.issue_count_by_story_points[s.id].to_i
         end
         s
@@ -619,7 +618,7 @@ class AgileQuery < Query
     @issue_count_by_story_points ||= issue_scope.group("#{Issue.table_name}.status_id").sum("#{AgileData.table_name}.story_points")
   end
 
-  def issue_board(options={})
+  def issue_board
     @truncated = RedmineAgile.board_items_limit <= issue_scope.count
     all_issues = self.issues.limit(RedmineAgile.board_items_limit).sorted_by_rank
     all_issues.group_by{|i| [i.status_id]}
@@ -644,14 +643,26 @@ class AgileQuery < Query
   def base_agile_query_scope
     Issue.visible
          .eager_load(:status, :project, :assigned_to, :tracker, :priority, :category, :fixed_version, :agile_data)
+         .where(agile_projects)
          .where(statement)
          .where(condition_for_status)
+  end
+
+  def agile_projects
+    return '1=1' unless project
+    p_ids = [project.id]
+    p_ids += project.descendants.select { |sub| sub.module_enabled?('agile') }.map(&:id) if Setting.display_subprojects_issues?
+    "#{Project.table_name}.id IN (#{p_ids.join(',')})"
   end
 
   def issue_scope
     return @agile_scope if @agile_scope
     @agile_scope = base_agile_query_scope
     @agile_scope
+  end
+
+  def project_statement
+      return super
   end
 
   def current_version

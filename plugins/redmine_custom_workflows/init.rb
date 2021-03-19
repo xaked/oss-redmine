@@ -1,9 +1,10 @@
 # encoding: utf-8
+# frozen_string_literal: true
 #
 # Redmine plugin for Custom Workflows
 #
-# Copyright Anton Argirov
-# Copyright Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2015-19 Anton Argirov
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -26,16 +27,16 @@ Redmine::Plugin.register :redmine_custom_workflows do
     author_url 'https://www.easyredmine.com'
   else
     name 'Redmine Custom Workflow plugin'
-    url 'https://www.redmine.org/plugins/custom-workflows'
-    author_url 'https://github.com/danmunn/redmine_custom_workflows/graphs/contributors'
+    url 'https://www.redmine.org/plugins/redmine_custom_workflows'
+    author_url 'https://github.com/anteo/redmine_custom_workflows/graphs/contributors'
   end
   author 'Anton Argirov/Karel Pičman'
   description 'Allows to create custom workflows for objects, defined in the plain Ruby language'
-  version '1.0.1'
+  version '1.0.4'
 
-  requires_redmine version_or_higher: '4.0.0'
+  requires_redmine version_or_higher: '4.1.0'
 
-  permission :manage_project_workflow, {}, :require => :member
+  permission :manage_project_workflow, {}, require: :member
 end
 
 unless Redmine::Plugin.installed?(:easy_extensions)

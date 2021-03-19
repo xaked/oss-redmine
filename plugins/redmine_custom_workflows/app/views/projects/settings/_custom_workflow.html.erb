@@ -1,7 +1,30 @@
+<%
+  # encoding: utf-8
+  #
+  # Redmine plugin for Custom Workflows
+  #
+  # Copyright © 2015-19 Anton Argirov
+  # Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
+  #
+  # This program is free software; you can redistribute it and/or
+  # modify it under the terms of the GNU General Public License
+  # as published by the Free Software Foundation; either version 2
+  # of the License, or (at your option) any later version.
+  #
+  # This program is distributed in the hope that it will be useful,
+  # but WITHOUT ANY WARRANTY; without even the implied warranty of
+  # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  # GNU General Public License for more details.
+  #
+  # You should have received a copy of the GNU General Public License
+  # along with this program; if not, write to the Free Software
+  # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+%>
+
 <%= form_for @project do %>
   <%= hidden_field_tag :tab, 'custom_workflow' %>
   <%= hidden_field_tag 'project[custom_workflow_ids][]', '' %>
-  <fieldset>
+  <fieldset class="box">
     <legend><%= l(:text_select_project_custom_workflows) %></legend>
     <% cws = CustomWorkflow.where(observable: CustomWorkflow::PROJECT_OBSERVABLES) %>
     <% if cws.any? %>
@@ -9,7 +32,8 @@
       <% cws.find_each do |w| %>
         <dt class="<%= 'disabled' unless w.active? %>">
           <label>
-            <%= check_box_tag 'project[custom_workflow_ids][]', w.id, @project.custom_workflow_ids.include?(w.id) || w.is_for_all?, :disabled => w.is_for_all? %> <%= w.name %>
+            <%= check_box_tag 'project[custom_workflow_ids][]', w.id,
+                  @project.custom_workflow_ids.include?(w.id) || w.is_for_all?, disabled: w.is_for_all? %> <%= w.name %>
             <% if !w.active? %>
               (<%= l(:text_custom_workflow_disabled) %>)
             <% elsif w.is_for_all? %>
@@ -17,7 +41,7 @@
             <% end %>
           </label>
         </dt>
-        <dd class="<%= 'disabled' unless w.active? %>"><em><%= textilizable(w.description) %></em></dd>
+        <dd class="<%= 'disabled' unless w.active? %>"><em><%= textilizable w.description %></em></dd>
       <% end %>
     </dl>
     <% else %>
@@ -26,4 +50,3 @@
   </fieldset>
   <%= submit_tag l(:button_save) %>
 <% end %>
-

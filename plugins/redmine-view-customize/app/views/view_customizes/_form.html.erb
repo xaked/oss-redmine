@@ -1,0 +1,46 @@
+<%= error_messages_for 'view_customize' %>
+<div class="box tabular">
+  <p>
+    <%= form.text_field :path_pattern,
+        :size => 100 %>
+    <em class="info">
+      <%= l(:text_path_pattern_info) %><br />
+      <%= l(:text_path_pattern_match_info) %>
+    </em>
+  </p>
+  <p>
+    <%= form.text_field :project_pattern,
+        :size => 100 %>
+    <em class="info">
+      <%= l(:text_project_pattern_info) %><br />
+      <%= l(:text_project_pattern_match_info) %>
+    </em>
+  </p>
+  <p>
+    <%= form.select :insertion_position,
+          options_for_select(
+            @view_customize.insertion_positions.map {|key, val| [l(key), val]},
+            :selected => @view_customize.insertion_position),
+          :required => true %>
+  </p>
+  <p>
+    <%= form.select :customize_type,
+          options_for_select(
+            @view_customize.customize_types.map {|key, val| [l(key), val]},
+            :selected => @view_customize.customize_type),
+          :required => true %>
+  </p>
+  <p>
+    <%= form.text_area :code,
+         :required => true, :rows => 12 %>
+  </p>
+  <p>
+    <%= form.text_field :comments, :size => 100 %>
+  </p>
+  <p>
+    <%= form.check_box :is_enabled %>
+  </p>
+  <p>
+    <%= form.check_box :is_private %>
+  </p>
+</div>

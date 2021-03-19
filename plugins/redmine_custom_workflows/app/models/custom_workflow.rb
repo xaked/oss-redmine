@@ -1,9 +1,10 @@
 # encoding: utf-8
+# frozen_string_literal: true
 #
 # Redmine plugin for Custom Workflows
 #
-# Copyright Anton Argirov
-# Copyright Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2015-19 Anton Argirov
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -20,21 +21,22 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 class CustomWorkflow < ActiveRecord::Base
-  OBSERVABLES = [:issue, :issue_attachments, :user, :attachment, :group, :group_users, :project, :project_attachments,
+  OBSERVABLES = [:issue, :issue_relation, :issue_attachments, :user, :attachment, :group, :group_users, :project, :project_attachments,
                  :wiki_content, :wiki_page_attachments, :time_entry, :version, :shared]
   PROJECT_OBSERVABLES = [:issue, :issue_attachments, :project, :project_attachments, :wiki_content, :wiki_page_attachments, :time_entry, :version]
   COLLECTION_OBSERVABLES = [:group_users, :issue_attachments, :project_attachments, :wiki_page_attachments]
-  SINGLE_OBSERVABLES = [:issue, :user, :group, :attachment, :project, :wiki_content, :time_entry, :version]
+  SINGLE_OBSERVABLES = [:issue, :issue_relation, :user, :group, :attachment, :project, :wiki_content, :time_entry, :version]
 
   has_and_belongs_to_many :projects
   acts_as_list
 
   validates_presence_of :name
-  validates_uniqueness_of :name, :case_sensitive => false
-  validates_format_of :author, :with => /\A([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})\z/i, :allow_blank => true
-  validate :validate_syntax, :validate_scripts_presence, :if => Proc.new {|workflow| workflow.respond_to?(:observable) and workflow.active?}
+  validates_uniqueness_of :name, case_sensitive: false
+  validates_format_of :author, with: /\A([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})\z/i, allow_blank: true
+  validate :validate_syntax, :validate_scripts_presence, if: Proc.new { |workflow| workflow.respond_to?(:observable) and workflow.active? }
 
-  scope :active, lambda { where(:active => true) }
+  scope :active, lambda { where(active: true) }
+  scope :sorted, lambda { order(:position) }
   scope :for_project, (lambda do |project|
     where("is_for_all=? OR EXISTS (SELECT * FROM #{reflect_on_association(:projects).join_table} WHERE project_id=? AND custom_workflow_id=id)",
           true, project.id)
@@ -42,21 +44,21 @@ class CustomWorkflow < ActiveRecord::Base
 
   def self.import_from_xml(xml)
     attributes = Hash.from_xml(xml).values.first
-    attributes.delete('exported_at')
-    attributes.delete('plugin_version')
-    attributes.delete('ruby_version')
-    attributes.delete('rails_version')
-    CustomWorkflow.new(attributes)
+    attributes.delete 'exported_at'
+    attributes.delete 'plugin_version'
+    attributes.delete 'ruby_version'
+    attributes.delete 'rails_version'
+    CustomWorkflow.new attributes
   end
 
   def self.log_message(str, object)
-    Rails.logger.info str + " for #{object.class} (\##{object.id}) \"#{object}\""
+    Rails.logger.info "#{str} for #{object.class} (\##{object.id}) \"#{object}\""
   end
 
   def self.run_shared_code(object)
     log_message '= Running shared code', object
     if CustomWorkflow.table_exists? # Due to DB migration
-      CustomWorkflow.active.where(observable: :shared).find_each do |workflow|
+      CustomWorkflow.active.where(observable: :shared).sorted.each do |workflow|
         unless workflow.run(object, :shared_code)
           log_message '= Abort running shared code', object
           return false
@@ -76,7 +78,7 @@ class CustomWorkflow < ActiveRecord::Base
       end
       return true unless workflows.any?
       log_message "= Running #{event} custom workflows", object
-      workflows.each do |workflow|
+      workflows.sorted.each do |workflow|
         unless workflow.run(object, event)
           log_message "= Abort running #{event} custom workflows", object
           return false
@@ -96,7 +98,7 @@ class CustomWorkflow < ActiveRecord::Base
     Rails.logger.info "== User workflow error: #{e.message}"
     object.errors.add :base, e.error
     false
-  rescue Exception => e
+  rescue => e
     Rails.logger.error "== Custom workflow exception: #{e.message}\n #{e.backtrace.join("\n ")}"
     object.errors.add :base, :custom_workflow_error
     false
@@ -109,7 +111,7 @@ class CustomWorkflow < ActiveRecord::Base
   def validate_syntax_for(object, event)
     object.instance_eval(read_attribute(event)) if respond_to?(event) && read_attribute(event)
   rescue WorkflowError => _
-  rescue Exception => e
+  rescue => e
     errors.add event, :invalid_script, error: e
   end
 

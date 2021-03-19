@@ -1,9 +1,10 @@
 # encoding: utf-8
+# frozen_string_literal: true
 #
 # Redmine plugin for Custom Workflows
 #
-# Copyright Anton Argirov
-# Copyright Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2015-19 Anton Argirov
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -35,8 +36,8 @@ module RedmineCustomWorkflows
       def before_save_custom_workflows
         @user = self
         @saved_attributes = attributes.dup
-        CustomWorkflow.run_shared_code(self)
-        CustomWorkflow.run_custom_workflows(:user, self, :before_save)
+        CustomWorkflow.run_shared_code self
+        CustomWorkflow.run_custom_workflows :user, self, :before_save
         throw :abort if errors.any?
         errors.empty? && (@saved_attributes == attributes || valid?)
       ensure
@@ -44,15 +45,15 @@ module RedmineCustomWorkflows
       end
 
       def after_save_custom_workflows
-        CustomWorkflow.run_custom_workflows(:user, self, :after_save)
+        CustomWorkflow.run_custom_workflows :user, self, :after_save
       end
 
       def before_destroy_custom_workflows
-        CustomWorkflow.run_custom_workflows(:user, self, :before_destroy)
+        CustomWorkflow.run_custom_workflows :user, self, :before_destroy
       end
 
       def after_destroy_custom_workflows
-        CustomWorkflow.run_custom_workflows(:user, self, :after_destroy)
+        CustomWorkflow.run_custom_workflows :user, self, :after_destroy
       end
 
     end

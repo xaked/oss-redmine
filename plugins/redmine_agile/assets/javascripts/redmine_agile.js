@@ -84,14 +84,15 @@
             positions[$e.data('id')] = { position: $e.index() };
           });
 
+          var issueParams = {};
+          if (version_id != undefined) issueParams['fixed_version_id'] = version_id || "";
+          if (sprint_id != undefined) issueParams['sprint_id'] = sprint_id || "";
+
           $.ajax({
             url: self.routes.update_agile_board_path,
             type: 'PUT',
             data: {
-              issue: {
-                fixed_version_id: version_id || "",
-                sprint_id: sprint_id || ""
-              },
+              issue: issueParams,
               positions: positions,
               id: issue_id
             },
@@ -226,7 +227,7 @@
               self.successSortable(oldStatusId, newStatusId, oldSwimLaneId, swimLaneId);
               $($item).replaceWith(data);
               estimatedHours = $($item).find("span.hours");
-              if(estimatedHours.size() > 0){
+              if(estimatedHours.length > 0){
                 hours = $(estimatedHours).html().replace(/(\(|\)|h)?/g, '');
                 // self.recalculateEstimateHours(oldStatusId, newStatusId, hours);
               }
@@ -325,36 +326,39 @@
       });
     }
 
-    this.createIssue = function(url){
-      $('.add-issue').click(function(){
-        $(this).children('.new-card__input').focus();
-      });
-      $('.new-card__input').keyup(function(evt){
-        var node = this;
-        evt = evt || window.event;
-        subject = $.trim($(node).val());
+    this.createIssue = function (url) {
+      $(".add-issue").click(function () {
+        $(this).children(".new-card__input").focus()
+      })
+      $(".new-card__input").keyup(function (evt) {
+        var node = this
+        var $sprintField = $("#sprint_id")
+        evt = evt || window.event
+        subject = $.trim($(node).val())
+        sprint_id = $sprintField ? $sprintField.val() : ""
         if (evt.keyCode == 13 && subject.length != 0) {
           $.ajax({
             url: url,
             type: "POST",
             data: {
               subject: subject,
-              status_id: $(node).parents('td').data('id')
+              status_id: $(node).parents("td").data("id"),
+              sprint_id: sprint_id
             },
             dataType: "html",
-            success: function(data, status, xhr){
-              $(node).parent().before(data);
-              $(node).val('');
+            success: function (data, status, xhr) {
+              $(node).parent().before(data)
+              $(node).val("")
             },
-            error:function(xhr, status, error) {
-              var alertMessage = parseErrorResponse(xhr.responseText);
+            error: function (xhr, status, error) {
+              var alertMessage = parseErrorResponse(xhr.responseText)
               if (alertMessage) {
-                setErrorMessage(alertMessage);
+                setErrorMessage(alertMessage)
               }
-            }
-          });
+            },
+          })
         }
-      });
+      })
     }
 
     this.routes = routes;
@@ -565,37 +569,60 @@ function observeIssueSearchfield(fieldId, url) {
         });
       }
     };
-    var reset = function() {
+    var reset = function(e) {
       if (timer) {
         clearInterval(timer);
         timer = setInterval(check, 300);
       }
     };
+    var skipSpecialKeys = function(e) {
+      if (e.keyCode === 13) { e.preventDefault() }
+    }
     var timer = setInterval(check, 300);
+    var skipSubmit = function(e) {
+      if (e.which == 13 || e.keyCode == 13) {
+        e.preventDefault();
+        return false
+      }
+    }
+    $this.bind('keydown', skipSubmit);
     $this.bind('keyup click mousemove', reset);
+    $this.bind('keydown', skipSpecialKeys);
   });
 }
 
 function recalculateHours() {
-  var unit = $(".planning-board").data('estimated-unit');
-
-  $('.version-column').each(function(i, elem){
-    var versionEstimationSum = 0;
-    $(elem).find('.issue-card').each(function(j, issue){
-      hours = parseFloat($(issue).data('estimated-hours'));
-      versionEstimationSum += hours;
+  $('.version-column').each(function (i, elem) {
+    var estimatedHours = 0;
+    var storyPoints = 0;
+    $(elem).find('.issue-card').each(function (j, issue) {
+      estimatedHours += parseFloat($(issue).data('estimated-hours'));
+      storyPoints += parseFloat($(issue).data('story-points'));
     });
-    $(elem).find('.version-estimate').text('(' + versionEstimationSum.toFixed(2) + unit + ')');
+
+    var values = [];
+    if (estimatedHours > 0) {
+      values.push(estimatedHours.toFixed(2) + 'h');
+    }
+
+    if (storyPoints > 0) {
+      values.push(storyPoints.toFixed(2) + 'sp');
+    }
+
+    if (values.length > 0) {
+      $(elem).find('.version-estimate').text('(' + values.join('/') + ')');
+    }
   });
 }
 
 function recalculateSprintHours() {
   var unit = $(".planning-board").data('estimated-unit');
+  var dataAttr = unit == 'sp' ? 'story-points' : 'estimated-hours';
 
   $('.sprint-column').each(function(i, elem){
     var versionEstimationSum = 0;
     $(elem).find('.issue-card').each(function(j, issue){
-      hours = parseFloat($(issue).data('estimated-hours'));
+      hours = parseFloat($(issue).data(dataAttr));
       versionEstimationSum += hours;
     });
     $(elem).find('.sprint-estimate').text('(' + versionEstimationSum.toFixed(2) + unit + ')');

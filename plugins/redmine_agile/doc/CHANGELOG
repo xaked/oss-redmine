@@ -1,8 +1,74 @@
 == Redmine Agile plugin changelog
 
 Redmine Agile plugin - Agile board plugin for redmine
-Copyright (C) 2011-2019 RedmineUP
+Copyright (C) 2011-2021 RedmineUP
 http://www.redmineup.com/
+
+== 2021-02-15 v1.6.0
+
+* Added Agile Sprint sharing
+* Fixed sprint/story points copy
+* Fixed sprint for on-board created sprints
+* Fixed initial install error
+* Fixed Sprint query save bug
+* Fixed chart dates interval
+* Fixed for all-projects query bug
+* Fixed chart empty dates bug
+* Fixed chart version bug
+* Fixed Backlog load-more bug
+* Fixed Agile board remarks
+* Fixed selected sprint bug
+* Fixed Agile board issues display bug
+* Fixed missed filters for old Redmine versions
+* Fixed empty watcher filter bug
+* Fixed workflow issue creation bug
+* Updated BR locale (Adriano J. Baptistella) 
+* Updated pt-BR locale (Adriano J. Baptistella)
+
+== 2020-07-24 v1.5.4
+
+* Added None for Sprint in issue context menu
+* Updated zh-tw locale (Hsiao Chung Chiang)
+* Updated es locale (Manuel Alba Ortega)
+* Fixed agile sprint remaining bug
+* Fixed issue copy error
+* Fixed submit error for issue search field
+* Fixed future data in the charts
+* Fixed error with all closed issues
+* Fixed full screen board update bug
+* Fixed first day for Agile chart
+* Fixed chart query visibility bug
+* Fixed no version column bug
+* Fixed sub project sprint assignment
+* Fixed backlog column saving
+* Fixed "For all projects" chart bug
+
+== 2020-03-18 v1.5.3
+
+* Added grouping for agine status changes view
+* Added issue list sprint filter
+* German translation updated (Peter Schossig)
+* Added Italian translation (Marco Congia)
+* Fixed bug with context menu story points 
+* Added validation for sprint open issues
+* Backlog tab default menu 
+
+== 2020-02-05 v1.5.2
+
+* Agile Backlog as a different module 
+* Fixed between dates chart bug
+* Fixed context menu edit bug 
+* Fixed sprint cards load bug
+
+== 2019-12-10 v1.5.1
+
+* Added Sprint view permissions
+* Redmine 4.1 styles support
+* New Story points board setting
+* Hide Sprint field without available sprints
+* Modal edit styles cleanup
+* Fixed sprint charts bug 
+* Fixed MySQL order by bug
 
 == 2019-10-22 v1.5.0
 

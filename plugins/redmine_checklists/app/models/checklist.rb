@@ -59,7 +59,7 @@ class Checklist < ActiveRecord::Base
 
   def self.recalc_issue_done_ratio(issue_id)
     issue = Issue.find(issue_id)
-    return false if (Setting.issue_done_ratio != 'issue_field') || !RedmineChecklists.issue_done_ratio? || issue.checklists.empty?
+    return false if (Setting.issue_done_ratio != 'issue_field') || !RedmineChecklists.issue_done_ratio? || issue.checklists.reject(&:is_section).empty?
     done_checklist = issue.checklists.reject(&:is_section).map { |c| c.is_done ? 1 : 0 }
     done_ratio = (done_checklist.count(1) * 10) / done_checklist.count * 10
     issue.update_attribute(:done_ratio, done_ratio)

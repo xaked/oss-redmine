@@ -2,8 +2,8 @@
 #
 # Redmine plugin for Custom Workflows
 #
-# Copyright Anton Argirov
-# Copyright Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2015-19 Anton Argirov
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -23,8 +23,8 @@ class AddAfterSaveToCustomWorkflows < ActiveRecord::Migration[4.2]
 
   def up
     rename_column :custom_workflows, :script, :before_save
-    change_column :custom_workflows, :before_save, :text, :null => true
-    add_column :custom_workflows, :after_save, :text, :null => true, :after => :before_save
+    change_column :custom_workflows, :before_save, :text, null: true
+    add_column :custom_workflows, :after_save, :text, null: true, after: :before_save
   end
 
   def down

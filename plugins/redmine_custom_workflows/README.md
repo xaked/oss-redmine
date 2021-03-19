@@ -1,7 +1,7 @@
 Custom Workflows plug-in
 ========================
 
-The current version of Redmine CustomWorkflows is **1.0.1** [![Build Status](https://api.travis-ci.org/anteo/redmine_custom_workflows.png)](https://travis-ci.org/anteo/redmine_custom_workflows)
+The current version of Redmine CustomWorkflows is **1.0.4** [![Build Status](https://api.travis-ci.org/anteo/redmine_custom_workflows.png)](https://travis-ci.org/anteo/redmine_custom_workflows)
 
 This plug-in provides a great functionality for those who is familiar with the Ruby language.
 It allows to customize workflow by defining own rules for issues processing. It's possible:
@@ -37,22 +37,35 @@ Check Wiki for examples and programming hints:
 
 https://github.com/anteo/redmine_custom_workflows/wiki
 
+Check this repo with some tested in work custom workflows:
+
+https://github.com/VoronyukM/custom-workwlows
+
 Installation
 ------------
 
 From a ZIP file:
 
-* Download the latest version of the plugin
-* Unzip to */plugins*
+* Download the latest version of the plugin.
+* Unzip it to /plugins.
 
 From a GIT repository:
 
-* Clone repository with <b>git clone https://github.com/anteo/redmine_custom_workflows.git plugins/redmine_custom_workflows</b> command
+* Clone  the repository:
+
+```
+git clone https://github.com/anteo/redmine_custom_workflows.git
+```
 
 After download:
 
-* Run <b>rake redmine:plugins:migrate</b>
-* Restart Redmine
+* Run migrations and restart the application:
+
+```
+RAILS_ENV=production bundle exec rake db:migrate
+RAILS_ENV=production bundle exec rake redmine:plugins:migrate NAME=redmine_custom_workflows
+systemctl restart apache2
+```
 
 Configuration
 -------------
@@ -125,6 +138,4 @@ Do not forget to check whether issue is just created. Here we create the new iss
 Compatibility
 -------------
 
-This plug-in is compatible with Redmine 4.x.x
-
-
+This plug-in is compatible with Redmine 4.1.x.

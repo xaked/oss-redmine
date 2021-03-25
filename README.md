@@ -22,9 +22,7 @@ services:
       - ${PWD}/mariadb:/var/lib/mysql
 
   redmine:
-    image: test:latest
-    # command: tail -f /dev/null
-    # image: docker.io/xaked/oss-redmine:4.1.1.1
+    image: docker.io/xaked/oss-redmine:4.1.1.3
     env_file: .env
     depends_on:
       - db

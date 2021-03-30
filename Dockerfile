@@ -1,4 +1,4 @@
-FROM redmine:4.1.1
+FROM redmine:4.1.2
 
 COPY --chown=redmine:redmine ./ ./
 

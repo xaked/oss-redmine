@@ -1,0 +1,15 @@
+<% if params[:context] %>
+  contextMenuHide();
+<% else %>
+  hideModal();
+  $('#ajax-modal').html('<%= j render partial: 'new' %>');
+  showModal('ajax-modal', '700px');
+<% end %>
+
+<% if @started_time_entry %>
+    window.stopwatch.timerStarted('<%= @started_time_entry.id %>',
+                                  '<%= j format_hours @started_time_entry.hours %>');
+<% else %>
+    window.stopwatch.timerStopped();
+<% end %>
+

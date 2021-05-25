@@ -1,7 +1,0 @@
-= title [l(:label_plugins), {controller: 'admin', action: 'plugins'}], @plugin.name
-
-#settings
-  = form_for @settings, url: {action: 'plugin'} do |f|
-    .box.tabular.settings
-      = render partial: @partial, locals: {f: f, settings: @settings}
-    = f.submit l(:button_apply)

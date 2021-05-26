@@ -1,4 +1,4 @@
-<span class="checklist-item <%= new_or_show(f) %> <%= 'checklist-section' if f.object.is_section %>" id="<%= f.object.id %>">
+<span class="checklist-item <%= new_or_show(f) %> <%= 'checklist-section' if f.object.is_section %> existing" id="<%= f.object.id %>">
   <% unless f.object.is_section %>
     <span class="checklist-show-only checklist-checkbox"><%= f.check_box :is_done %></span>
   <% end %>

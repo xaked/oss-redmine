@@ -3,7 +3,7 @@
 # This file is a part of Redmine Checklists (redmine_checklists) plugin,
 # issue checklists management plugin for Redmine
 #
-# Copyright (C) 2011-2020 RedmineUP
+# Copyright (C) 2011-2021 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_checklists is free software: you can redistribute it and/or modify
@@ -84,7 +84,7 @@ class Redmine::ApiTest::ChecklistsTest < Redmine::ApiTest::Base
     assert_equal parameters[:checklist][:subject], checklist.subject
 
     assert_response :created
-    assert_equal 'application/xml', @response.content_type
+    assert_match 'application/xml', @response.content_type
     assert_select 'checklist id', :text => checklist.id.to_s
   end
 
@@ -97,6 +97,29 @@ class Redmine::ApiTest::ChecklistsTest < Redmine::ApiTest::Base
 
     checklist = Checklist.find(1)
     assert_equal parameters[:checklist][:subject], checklist.subject
+  end
+
+  def test_recalculate_ratio_after_multirequests
+    issue = Issue.find(1)
+    with_checklists_settings('issue_done_ratio' => '1') do
+      assert_equal 0, issue.reload.done_ratio
+
+      parameters_array = [
+        [1, { :checklist => { subject: 'Item 1', is_done: '1' } }],
+        [2, { :checklist => { subject: 'Item 2', is_done: '1' } }],
+        [1, { :checklist => { subject: 'Item 1', is_done: '0' } }],
+        [2, { :checklist => { subject: 'Item 2', is_done: '1' } }]
+      ]
+
+      assert_no_difference('Checklist.count') do
+        parameters_array.each do |params|
+          compatible_api_request :put, "/checklists/#{params[0]}.xml", params[1], credentials('admin')
+          assert ['200', '204'].include?(response.code)
+        end
+      end
+
+      assert_equal 50, issue.reload.done_ratio
+    end
   end
 
   def test_delete_1_xml

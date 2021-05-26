@@ -192,7 +192,8 @@ ru:
   label_agile_board_totals_velocity: Скорость закрытия
 
   label_agile_sprint_list_active: Активные спринты
-  label_agile_sprint_list_open: Следующие спринты
+  label_agile_sprint_list_future: Следующие спринты
+  label_agile_sprint_list_old: Прошлые спринты
 
   label_agile_moving_average: Скользящая средняя
 

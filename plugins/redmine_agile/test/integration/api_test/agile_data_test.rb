@@ -60,7 +60,7 @@ class Redmine::ApiTest::AgileDataTest < ActiveRecord::VERSION::MAJOR >= 4 ? Redm
     end
     compatible_api_request :get, '/issues/1/agile_data.xml', {}, credentials('admin')
 
-    assert_equal 'application/xml', @response.content_type
+    assert_match 'application/xml', @response.content_type
     assert_equal '200', @response.code
   end
 
@@ -71,7 +71,7 @@ class Redmine::ApiTest::AgileDataTest < ActiveRecord::VERSION::MAJOR >= 4 ? Redm
     end
     compatible_api_request :get, "/issues/#{missied_id}/agile_data.xml", {}, credentials('admin')
 
-    assert_equal 'application/xml', @response.content_type
+    assert_match 'application/xml', @response.content_type
     assert ['401', '403'].include?(@response.code)
   end
 end

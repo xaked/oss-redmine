@@ -4,7 +4,7 @@
 # Redmine plugin for Custom Workflows
 #
 # Copyright © 2015-19 Anton Argirov
-# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2019-21 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -30,7 +30,6 @@ module RedmineCustomWorkflows
       def self.fixtures(*table_names)
         dir = File.join( File.dirname(__FILE__), '../../../test/fixtures')
         table_names.each do |x|
-          Rails.logger.info ">>> #{dir}/#{x}.yml"
           ActiveRecord::FixtureSet.create_fixtures(dir, x) if File.exist?("#{dir}/#{x}.yml")
         end
         super(table_names)

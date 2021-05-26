@@ -22,7 +22,7 @@
 require File.expand_path('../../../test_helper', __FILE__)
 
 class BurndownChartTest < ActiveSupport::TestCase
-  fixtures :projects, :trackers, :enumerations, :issue_statuses, :issue_categories
+  fixtures :users, :projects, :trackers, :enumerations, :issue_statuses, :issue_categories
 
   def setup
     @user = User.first
@@ -157,14 +157,15 @@ class BurndownChartTest < ActiveSupport::TestCase
 
   def create_issue_data(month)
     mstring = month.to_s.rjust(2, '0')
-    issue = Issue.create(tracker: @tracker,
-                         project: @project,
-                         author: @user,
-                         subject: "Issue ##{month}",
-                         status: month != 12 ? @closed_status : @open_status,
-                         estimated_hours: month * 2)
+    issue = Issue.create!(tracker: @tracker,
+                          project: @project,
+                          author: @user,
+                          subject: "Issue ##{month}",
+                          status: month != 12 ? @closed_status : @open_status,
+                          estimated_hours: month * 2)
+    issue.reload
     issue.create_agile_data(story_points: month * 3)
-    issue.update_attributes(created_on: "2019-01-01 09:00", closed_on: "2019-#{mstring}-01 11:00")
+    issue.update(created_on: "2019-01-01 09:00", closed_on: "2019-#{mstring}-01 11:00")
     issue.id
   end
 end

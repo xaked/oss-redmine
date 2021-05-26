@@ -221,7 +221,10 @@ module RedmineAgile
     end
 
     def chart_dates_by_period
-      @chart_dates_by_period ||= (@period_count - 1).times.inject([]) do |accum, m|
+      return @chart_dates_by_period if @chart_dates_by_period
+
+      period = period_count > 1 ? period_count - 1 : period_count
+      @chart_dates_by_period ||= period.times.inject([]) do |accum, m|
         period_date = ((@date_to.to_date - 1 - m * @scale_division) + 1)
         accum << if @interval_size == WEEK_INTERVAL
                    period_date.at_beginning_of_week.to_date

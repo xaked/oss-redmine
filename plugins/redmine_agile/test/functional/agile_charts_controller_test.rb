@@ -143,27 +143,28 @@ class AgileChartsControllerTest < ActionController::TestCase
 
   def test_issues_burndown_chart_when_first_issue_later_then_due_date
     new_version = Version.create!(name: 'Some new vesion', effective_date: (Date.today - 10.days), project_id: @project.id)
-    new_version.fixed_issues << Issue.create!(
+    issue = Issue.create!(
       project_id: @project.id,
       tracker_id: 1,
       subject: 'test_issues_burndown_chart_when_first_issue_later_then_due_date',
       author_id: 2,
       start_date: Date.today
     )
+    new_version.fixed_issues << issue.reload
 
     should_get_render_chart chart: RedmineAgile::Charts::BURNDOWN_CHART, project_id: @project.identifier, version_id: new_version.id
   end
 
   def test_get_show_chart_with_open_target_version
     current_version = @issue.fixed_version
-    @issue.update_attributes(fixed_version: Version.open.first)
+    @issue.update(fixed_version: Version.open.first)
 
     should_get_render_chart project_id: @project.identifier, chart: 'burndown_chart',
                                                              f: ['version_status'],
                                                              op: { 'version_status' => '=' },
                                                              v: { 'version_status' => ['open'] }
     ensure
-    @issue.update_attributes(fixed_version: current_version)
+    @issue.update(fixed_version: current_version)
   end
 
   private
@@ -177,7 +178,7 @@ class AgileChartsControllerTest < ActionController::TestCase
   def should_get_render_chart(parameters = {})
     compatible_xhr_request :get, :render_chart, parameters
     assert_response :success
-    assert_equal 'application/json', response.content_type
+    assert_match 'application/json', response.content_type
 
     json = ActiveSupport::JSON.decode(response.body)
     assert_kind_of Hash, json

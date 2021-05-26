@@ -1,7 +1,7 @@
 # This file is a part of Redmine Checklists (redmine_checklists) plugin,
 # issue checklists management plugin for Redmine
 #
-# Copyright (C) 2011-2020 RedmineUP
+# Copyright (C) 2011-2021 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_checklists is free software: you can redistribute it and/or modify
@@ -62,7 +62,7 @@ class Checklist < ActiveRecord::Base
     return false if (Setting.issue_done_ratio != 'issue_field') || !RedmineChecklists.issue_done_ratio? || issue.checklists.reject(&:is_section).empty?
     done_checklist = issue.checklists.reject(&:is_section).map { |c| c.is_done ? 1 : 0 }
     done_ratio = (done_checklist.count(1) * 10) / done_checklist.count * 10
-    issue.update_attribute(:done_ratio, done_ratio)
+    issue.update(done_ratio: done_ratio)
   end
 
   def self.old_format?(detail)

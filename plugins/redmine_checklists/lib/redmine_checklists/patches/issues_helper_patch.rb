@@ -1,7 +1,7 @@
 # This file is a part of Redmine Checklists (redmine_checklists) plugin,
 # issue checklists management plugin for Redmine
 #
-# Copyright (C) 2011-2020 RedmineUP
+# Copyright (C) 2011-2021 RedmineUP
 # http://www.redmineup.com/
 #
 # redmine_checklists is free software: you can redistribute it and/or modify
@@ -36,7 +36,9 @@ module RedmineChecklists
 
         def details_to_strings_with_checklists(details, no_html = false, options = {})
           details_checklist, details_other = details.partition{ |x| x.prop_key == 'checklist' }
-          return details_to_strings_without_checklists(details_other, no_html, options) unless User.current.allowed_to?(:view_checklists, @issue.project)
+          if @issue.nil? || !User.current.allowed_to?(:view_checklists, @issue.try(:project), global: @issue.present?)
+            return details_to_strings_without_checklists(details_other, no_html, options)
+          end
 
           details_checklist.map do |detail|
             result = []

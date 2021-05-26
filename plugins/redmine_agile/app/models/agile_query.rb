@@ -221,7 +221,7 @@ class AgileQuery < Query
       type: :list_optional, values: assigned_to_values
     ) unless assigned_to_values.empty?
 
-    group_values = Group.all.collect {|g| [g.name, g.id.to_s] }
+    group_values = Group.visible.all.collect {|g| [g.name, g.id.to_s] }
     add_available_filter("member_of_group",
       type: :list_optional, values: group_values
     ) unless group_values.empty?
@@ -346,7 +346,8 @@ class AgileQuery < Query
   end
 
   def groupable_columns
-    available_columns.select { |c| c.groupable && !c.is_a?(QueryCustomFieldColumn) }
+    groupable_method = Redmine::VERSION.to_s > '4.2' ? :groupable? : :groupable
+    available_columns.select { |c| c.public_send(groupable_method) && !c.is_a?(QueryCustomFieldColumn) }
   end
 
   def sql_for_issue_id_field(field, operator, value)
@@ -650,13 +651,16 @@ class AgileQuery < Query
 
   def agile_projects
     return '1=1' unless project
+
     p_ids = [project.id]
     p_ids += project.descendants.select { |sub| sub.module_enabled?('agile') }.map(&:id) if Setting.display_subprojects_issues?
+
     "#{Project.table_name}.id IN (#{p_ids.join(',')})"
   end
 
   def issue_scope
     return @agile_scope if @agile_scope
+
     @agile_scope = base_agile_query_scope
     @agile_scope
   end

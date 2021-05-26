@@ -3,7 +3,7 @@
 # Redmine plugin for Custom Workflows
 #
 # Copyright © 2015-19 Anton Argirov
-# Copyright © 2019-21 Karel Pičman <karel.picman@kontron.com>
+# Copyright © 2019-20 Karel Pičman <karel.picman@kontron.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -19,11 +19,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-class AddBeforeAndAfterDestroyToCustomWorkflows < ActiveRecord::Migration[4.2]
+class ChangeDefaultActiveBooleanValueToCustomWorkflows < ActiveRecord::Migration[4.2]
+  def up
+    if ActiveRecord::Base.connection.adapter_name =~ /sqlite/i
+      change_column_default :custom_workflows, :active, from: true, to: 1
+      CustomWorkflow.where("active = 't'").update_all(active: 1)
+      CustomWorkflow.where("active = 'f'").update_all(active: 0)
+    end
+  end
 
-  def change
-    add_column :custom_workflows, :before_destroy, :text, null: true
-    add_column :custom_workflows, :after_destroy, :text, null: true
+  def down
+    if ActiveRecord::Base.connection.adapter_name =~ /sqlite/i
+      change_column_default :custom_workflows, :active, from: 1, to: true
+      CustomWorkflow.where("active = 1").update_all(active: 't')
+      CustomWorkflow.where("active = 0").update_all(active: 'f')
+    end
   end
 
 end

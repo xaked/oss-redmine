@@ -199,7 +199,8 @@ pt:
   label_agile_board_totals_remaining: Remanecente
 
   label_agile_sprint_list_active: Sprints ativos
-  label_agile_sprint_list_open:  Sprints futuros
+  label_agile_sprint_list_future:  Sprints futuros
+  label_agile_sprint_list_old: Sprints antigos
 
   label_agile_mixed_trackers: Tipos mistos
   label_agile_moving_average: Média móvel

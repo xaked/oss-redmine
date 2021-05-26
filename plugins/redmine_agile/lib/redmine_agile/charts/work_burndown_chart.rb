@@ -53,7 +53,7 @@ module RedmineAgile
         total_hours_left, cumulative_total_hours_left = date_effort(issues, date)
         [total_hours_left, cumulative_total_hours - cumulative_total_hours_left]
       end
-      tail_values = [data.last] * (current_date_period - data.size)
+      tail_values = data.last ? [data.last] * (current_date_period - data.size) : []
       data = first_period_effort(all_issues, chart_dates_by_period.first, cumulative_total_hours) + data + tail_values
       @burndown_data, @cumulative_burndown_data = data.transpose
     end

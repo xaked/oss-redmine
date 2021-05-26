@@ -99,6 +99,12 @@ if(typeof(String.prototype.trim) === "undefined")
 
 })( jQuery );
 
+var updateChecklistPositions =  function() {
+  $(".checklist-item.existing").each(function(index, element){
+    $(element).children('.checklist-item-position').val(index);
+  });
+}
+
 var Redmine = Redmine || {};
 
 Redmine.Checklist = $.klass({
@@ -114,6 +120,7 @@ Redmine.Checklist = $.klass({
     var new_id = new Date().getTime();
     var regexp = new RegExp("new_checklist", "g");
     appended = $(this.content.replace(regexp, new_id)).appendTo(this.root);
+    updateChecklistPositions();
     appended.find('.edit-box').focus();
   },
 
@@ -265,8 +272,11 @@ Redmine.Checklist = $.klass({
 
       if (checkbox.val() === "false") {
         checkbox.val("1");
+        itemToRemove.removeClass('existing')
         itemToRemove.fadeOut(200);
       }
+
+      updateChecklistPositions();
     }, this));
   },
 
@@ -281,9 +291,7 @@ Redmine.Checklist = $.klass({
         if (ui.item.hasClass("edit-active")) {
           $( this ).sortable( "cancel" );
         }
-        $(".checklist-item").each(function(index, element){
-          $(element).children('.checklist-item-position').val(index);
-        });
+        updateChecklistPositions();
       }
     });
   },
@@ -429,7 +437,7 @@ $.fn.checklist = function(element){
 
 Redmine.ChecklistToggle = $.klass({
   manageToggling: function (t_val) {
-    var checkedCheckboxes = $('.checklist-checkbox:checkbox:checked');
+    var checkedCheckboxes = $('#checklist_items .checklist-checkbox:checkbox:checked');
 
     if(localStorage.getItem("hide_closed_checklists") === t_val){
       $($(checkedCheckboxes).closest('li')).hide();

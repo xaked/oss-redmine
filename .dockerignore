@@ -2,3 +2,4 @@
 log/
 lib/
 redmine_hourglass/
+build.sh

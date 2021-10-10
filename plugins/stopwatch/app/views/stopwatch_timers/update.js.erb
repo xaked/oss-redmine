@@ -1,9 +1,0 @@
-<% if @success %>
-  hideModal();
-<% else %>
-  $('#ajax-modal').html('<%= j render partial: 'stopwatch_timers/edit' %>');
-<% end %>
-<% if params[:continue] %>
-  $('#ajax-modal').html('<%= j render partial: 'stopwatch_timers/new' %>');
-  showModal('ajax-modal', '700px');
-<% end %>

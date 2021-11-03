@@ -1,8 +1,8 @@
 #!/bin/bash
 
-version=4.2.2.1;
-org=xaked;
-app=oss-redmine;
+version=4.2.3.1;
+org=ossua;
+app=it-redmine;
 
 DOCKER_BUILDKIT=1 docker build --rm -f Dockerfile -t $org/$app:latest .;
 DOCKER_BUILDKIT=1 docker build --rm -f Dockerfile -t $org/$app:$version .;

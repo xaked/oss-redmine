@@ -23,14 +23,34 @@ module RedmineAgile
     ISSUES_BURNDOWN_CHART          = 'issues_burndown'.freeze
     WORK_BURNDOWN_SP_CHART         = 'work_burndown_sp'.freeze
     WORK_BURNDOWN_HOURS_CHART      = 'work_burndown_hours'.freeze
+    BURNUP_CHART                   = 'burnup_chart'.freeze
+    ISSUES_BURNUP_CHART            = 'burnup'.freeze
+    WORK_BURNUP_SP_CHART           = 'work_burnup_sp'.freeze
+    WORK_BURNUP_HOURS_CHART        = 'work_burnup_hours'.freeze
+
+    CUMULATIVE_FLOW_CHART          = 'cumulative_flow'.freeze
+    ISSUES_VELOCITY_CHART          = 'issues_velocity'.freeze
+
+    CYCLE_TIME_CHART               = 'cycle_time'.freeze
+    LEAD_TIME_CHART                = 'lead_time'.freeze
+    AVERAGE_LEAD_TIME_CHART        = 'average_lead_time'.freeze
+
+    TRACKERS_CUMULATIVE_FLOW_CHART = 'trackers_cumulative_flow'.freeze
 
     AGILE_CHARTS = {
       BURNDOWN_CHART =>                 { name: :label_agile_chart_burndown, class: BurndownChart,
                                           aliases: [ISSUES_BURNDOWN_CHART, WORK_BURNDOWN_HOURS_CHART, WORK_BURNDOWN_SP_CHART] },
+      BURNUP_CHART =>                   { name: :label_agile_chart_burnup, class: BurnupChart,
+                                          aliases: [ISSUES_BURNUP_CHART, WORK_BURNUP_HOURS_CHART, WORK_BURNUP_SP_CHART] },
+      CUMULATIVE_FLOW_CHART =>          { name: :label_agile_charts_cumulative_flow, class: CumulativeFlowChart },
+      ISSUES_VELOCITY_CHART =>          { name: :label_agile_charts_issues_velocity, class: VelocityChart },
+      CYCLE_TIME_CHART =>               { name: :label_agile_charts_cycle_time, class: CycleTimeChart, aliases: [LEAD_TIME_CHART, AVERAGE_LEAD_TIME_CHART] },
+      TRACKERS_CUMULATIVE_FLOW_CHART => { name: :label_agile_charts_trackers_cumulative_flow, class: TrackersCumulativeFlowChart }
     }.freeze
 
     CHARTS_WITH_UNITS = [
       BURNDOWN_CHART,
+      BURNUP_CHART
     ].freeze
 
     UNIT_ISSUES = 'issues'.freeze
@@ -47,6 +67,9 @@ module RedmineAgile
       ISSUES_BURNDOWN_CHART => UNIT_ISSUES,
       WORK_BURNDOWN_HOURS_CHART => UNIT_HOURS,
       WORK_BURNDOWN_SP_CHART => UNIT_STORY_POINTS,
+      ISSUES_BURNUP_CHART => UNIT_ISSUES,
+      WORK_BURNUP_HOURS_CHART => UNIT_HOURS,
+      WORK_BURNUP_SP_CHART => UNIT_STORY_POINTS
     }
 
     def self.valid_chart?(name) !!AGILE_CHARTS[name] end

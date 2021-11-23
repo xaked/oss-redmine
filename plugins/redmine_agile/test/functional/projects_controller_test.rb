@@ -36,4 +36,22 @@ class ProjectsControllerTest < ActionController::TestCase
     EnabledModule.create(:project => @project_2, :name => 'agile')
     @request.session[:user_id] = 1
   end
+  def test_get_index_with_colors
+    with_agile_settings 'color_on' => 'project' do
+      compatible_request :get, :settings, :id => @project_1
+      assert_response :success
+      assert_select '#project_agile_color_attributes_color', 1
+    end
+  end
+
+
+  def test_save_project_with_color
+    with_agile_settings 'color_on' => 'project' do
+      compatible_request :post, :update, :id => @project_1, :project => { :name => 'Test changed name',
+        :agile_color_attributes => { :color => AgileColor::AGILE_COLORS[:red] } }
+      @project_1.reload
+      assert_equal 'Test changed name', @project_1.name
+      assert_equal AgileColor::AGILE_COLORS[:red], @project_1.color
+    end
+  end
 end

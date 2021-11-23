@@ -36,6 +36,7 @@ class AgileChartsQuery < AgileQuery
     super
 
     add_available_filter 'chart_period', type: :date_past, name: l(:label_date)
+    add_available_filter 'sprint_id', type: :list, values: sprint_values, label: :label_agile_sprint
   end
 
   def sprint_values
@@ -50,6 +51,9 @@ class AgileChartsQuery < AgileQuery
 
   def sql_for_chart_period_field(_field, _operator, _value)
     '1=1'
+  end
+  def sql_for_sprint_id_field(field, operator, value)
+    sql_for_field(field, operator, value, AgileData.table_name, 'agile_sprint_id')
   end
 
   def chart
@@ -93,6 +97,7 @@ class AgileChartsQuery < AgileQuery
     self.column_names = params[:c] || (params[:query] && params[:query][:column_names])
     self.date_from = params[:date_from] || (params[:query] && params[:query][:date_from])
     self.date_to = params[:date_to] || (params[:query] && params[:query][:date_to])
+    self.sprint_id = params[:sprint_id] || (params[:query] && params[:query][:sprint_id])
     self.chart = params[:chart] || (params[:query] && params[:query][:chart]) || params[:default_chart] || RedmineAgile.default_chart
     self.interval_size = params[:interval_size] || (params[:query] && params[:query][:interval_size]) || RedmineAgile::AgileChart::DAY_INTERVAL
     self.chart_unit = params[:chart_unit] || (params[:query] && params[:query][:chart_unit]) || RedmineAgile::Charts::UNIT_ISSUES
@@ -108,6 +113,10 @@ class AgileChartsQuery < AgileQuery
 
   def chart_period_filter(params)
     return {} if (params[:fields] || params[:f]).include?('chart_period')
+    sprint = project.shared_agile_sprints.where(id: params[:sprint_id]).first if project
+    if sprint
+      return { 'chart_period' => { operator: '><', values: [sprint.start_date.to_s, sprint.end_date.to_s] }, 'sprint_id' => { operator: '=', values: [sprint.id] } }
+    end
     { 'chart_period' => { operator: 'm', values: [''] } }
   end
 

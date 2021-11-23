@@ -154,6 +154,27 @@ class AgileChartsControllerTest < ActionController::TestCase
 
     should_get_render_chart chart: RedmineAgile::Charts::BURNDOWN_CHART, project_id: @project.identifier, version_id: new_version.id
   end
+  def test_agile_chart_queries_visibility
+    me_chart = AgileChartsQuery.new(name: 'Only for me chart',
+                                    options: { chart: 'burndown_chart', interval_size: 'day', chart_unit: 'issues' },
+                                    visibility: 0)
+    me_chart.user_id = 1
+    me_chart.save
+
+    another_chart = AgileChartsQuery.new(name: 'Another private chart',
+                                         options: { chart: 'burndown_chart', interval_size: 'day', chart_unit: 'issues' },
+                                         visibility: 0)
+    another_chart.user_id = 2
+    another_chart.save
+
+    compatible_request :get, :show
+    assert_response :success
+    assert_select 'ul.agile-chart-queries li', 1
+    assert_match /Only for me chart/, @response.body
+    assert_no_match /Another private chart/, @response.body
+  ensure
+    [me_chart, another_chart].each(&:destroy)
+  end
 
   def test_get_show_chart_with_open_target_version
     current_version = @issue.fixed_version

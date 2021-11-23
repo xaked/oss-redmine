@@ -56,6 +56,19 @@ module RedmineAgile
       ensure
         emodule.destroy
       end
+      def test_get_index_with_filter_description
+        compatible_request :get, :index, {
+          project_id: 'ecookbook',
+          set_filter: '1',
+          f: %w(description),
+          op: { 'description' => '=' },
+          v: { 'description' => ['Unable to print recipes'] },
+          c: %w(tracker assigned_to)
+        }
+
+        assert_response :success
+        assert_equal [1], agile_issues_in_list.map(&:id)
+      end
 
       def test_get_index_with_filter_watcher_id
         issues(:issues_001).set_watcher(users(:users_002))
@@ -103,6 +116,7 @@ class AgileBoardsControllerTest < ActionController::TestCase
            :journal_details,
            :queries
   fixtures :email_addresses if Redmine::VERSION.to_s > '3.0'
+  RedmineAgile::TestCase.create_fixtures(Redmine::Plugin.find(:redmine_agile).directory + '/test/fixtures/', [:agile_sprints, :agile_data])
 
   include(RedmineAgile::AgileBoardsControllerTest::SpecificTestCase) if Redmine::VERSION.to_s > '2.4'
 
@@ -297,6 +311,186 @@ class AgileBoardsControllerTest < ActionController::TestCase
   def test_get_index_with_all_fields
     compatible_request :get, :index, agile_query_params.merge(:f => AgileQuery.available_columns.map(&:name))
     assert_response :success
+  end
+  def test_get_index_with_colors
+    with_agile_settings 'color_on' => 'issue' do
+      issue = Issue.find(1)
+      issue.agile_color.color = 'red'
+      issue.save
+      compatible_request :get, :index, agile_query_params.merge(:color_base => 'issue')
+      assert_response :success
+      assert_select 'td.issue-status-col .issue-card.bk-red', 1
+    end
+  end
+
+  def test_get_index_with_colors_for_spent_time
+    with_agile_settings 'color_on' => 'spent_time' do
+      issue = Issue.find(1)
+      est_time = issue.estimated_hours
+      spent_time = issue.spent_hours
+      compatible_request :get, :index, agile_query_params.merge(:color_base => 'spent_time')
+      assert_response :success
+      assert_select "td.issue-status-col .issue-card.bk-#{AgileColor.for_spent_time(est_time, spent_time)}"
+    end
+  end
+
+  def test_get_index_with_colors_for_project
+    with_agile_settings 'color_on' => 'project' do
+      @project_1.color = AgileColor::AGILE_COLORS[:red]
+      @project_1.save
+      compatible_request :get, :index, :color_base => 'project'
+      assert_response :success
+      assert_select 'td.issue-status-col .issue-card.bk-red', @project_1.issues.open.count
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_get_index_with_colors_for_user
+    with_settings :gravatar_enabled => '1' do
+      with_agile_settings 'color_on' => 'user' do
+        issue = Issue.find(2)
+        user = issue.assigned_to
+        user.color = AgileColor::AGILE_COLORS[:red]
+        user.save
+        user_color = user.reload.color
+        compatible_request :get, :index, agile_query_params.merge(:color_base => 'user')
+        assert_response :success
+        assert_select 'td.issue-status-col .issue-card[data-id="2"]'
+        assert_select "img.gravatar[style='#{"border-left: 5px solid #{user_color}".html_safe}']"
+        assert response.body.include? user_color
+      end
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_get_index_with_colors_for_user_with_allow_issue_assignment_to_groups_settings
+    with_settings :gravatar_enabled => '1', :issue_group_assignment => '1' do
+      with_agile_settings 'color_on' => 'user' do
+        issue = Issue.find(2)
+        user = issue.assigned_to
+        user.color = AgileColor::AGILE_COLORS[:red]
+        user.save
+        user_color = user.reload.color
+        compatible_request :get, :index, agile_query_params.merge(:color_base => 'user')
+        assert_response :success
+        assert_select 'td.issue-status-col .issue-card[data-id="2"]'
+        assert_select "img.gravatar[style='#{"border-left: 5px solid #{user_color}".html_safe}']"
+        assert response.body.include? user_color
+      end
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_get_index_with_colors_by_user
+    with_settings :gravatar_enabled => '1' do
+      with_agile_settings 'color_on' => 'user' do
+        issue = Issue.find(2)
+        user_color = AgileColor.for_user(issue.assigned_to.login)
+        compatible_request :get, :index, agile_query_params.merge(:color_base => 'user')
+        assert_response :success
+        assert_select 'td.issue-status-col .issue-card[data-id="2"]'
+        assert_select "img.gravatar[style='#{"border-left: 5px solid #{user_color}".html_safe}']"
+        assert response.body.include? user_color
+      end
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_get_index_with_none_colors_by_user
+    with_settings :gravatar_enabled => '1' do
+      with_agile_settings 'color_on' => 'user' do
+        issue = Issue.find(2)
+        user_color = AgileColor.for_user(issue.assigned_to.login)
+        compatible_request :get, :index, agile_query_params.merge(:color_base => 'none')
+        assert_response :success
+        assert_select 'td.issue-status-col .issue-card[data-id="2"]'
+        assert_select "img.gravatar[style='#{"border-left: 5px solid #{user_color}".html_safe}']", false
+        assert !(response.body.include? user_color), 'Found color for user'
+      end
+    end
+  end
+
+  def test_get_index_with_swimlanes
+    compatible_request :get, :index, agile_query_params.merge(:group_by => 'priority')
+    assert_response :success
+    assert_select 'tr.group.open.swimlane[data-id="4"] td', /Low/
+    assert_select 'tr.group.open.swimlane[data-id="4"] td span.count', { :text => '5' }
+
+    groupable_method = Redmine::VERSION.to_s > '4.2' ? :group_by_statement : :groupable
+    AgileQuery.available_columns.select { |c| c.public_send(groupable_method) }.each do |column|
+      compatible_request :get, :index, agile_query_params.merge(:group_by => column.name.to_s)
+      assert_response :success
+    end
+  end
+
+  def test_count_for_swimlanes
+    issues_count = Issue.where(:project_id => [@project_1.id] + @project_1.children.pluck(:id)).open.group('project_id').count
+    compatible_request :get, :index, agile_query_params.merge(:group_by => 'project')
+    assert_response :success
+    issues_count.each do |c|
+      assert_select "tr.group.open.swimlane[data-id='#{c[0]}'] td span.count", :text => c[1].to_s
+    end
+  end
+
+  def test_get_index_with_sub_issues
+    issue1 = Issue.find(1)
+    issue2 = Issue.create!(
+      :subject         => 'Sub issue',
+      :project         => issue1.project,
+      :tracker         => issue1.tracker,
+      :author          => issue1.author,
+      :parent_issue_id => issue1.id,
+      :fixed_version   => Version.last
+    )
+
+    compatible_request :get, :index, agile_query_params.merge(:c => ['sub_issues'])
+    assert_response :success
+
+    assert_select 'div.sub-issues', 1
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_proper_columns_for_default_board
+    # In Redmine 2.3 Query model doesn't have options attribute
+    # So it can't be default and so 'default' behaviour cannot be broken
+    # As it does not work at all
+    if AgileQuery.new.has_attribute?(:options)
+      AgileQuery.destroy_all
+      project1 = Project.create!(:name => 'project1', :identifier => 'project1')
+      board_params = {
+        :project => project1,
+        :name => 'board1',
+        :column_names => [:id, :author, :description],
+        :options => { :is_default => true },
+        :visibility => 2
+      }
+
+      AgileQuery.create! board_params
+      EnabledModule.create(:project => project1, :name => 'agile')
+      compatible_request :get, :index, :project_id => 'project1'
+      assert_response :success
+    end
+  end
+
+  def test_proper_columns_for_default_board_with_update
+    if AgileQuery.new.has_attribute?(:options)
+      board_params = {
+        :project => @project_1,
+        :name => 'board_for_project_1',
+        :column_names => [:id, :author, :description, :project, :tracker, :assignee],
+        :options => { :is_default => true },
+        :visibility => 2
+      }
+
+      board = AgileQuery.create! board_params
+      issues = Issue.where(:project_id => [@project_1] + Project.where(:parent_id => @project_1.id).to_a).open(true)
+      compatible_request :get, :index, :project_id => @project_1, :query_id => board.id
+      assert_select '.issue-card span.fields p.issue-id strong', issues.count
+      assert_select '.issue-card span.fields p.project', issues.count
+      assert_select '.issue-card span.fields p.name', issues.count
+      assert_select '.issue-card span.fields p.attributes a', issues.count
+      compatible_request :put, :update, :issue => { :status_id => (issues.first.status_id + 1) }, :id => issues.first.id
+      # update action return html for one card but with same fields
+      assert_select '.issue-card span.fields p.issue-id strong', 1
+      assert_select '.issue-card span.fields p.project', 1
+      assert_select '.issue-card span.fields p.name', 1
+      assert_select '.issue-card span.fields p.attributes a', 1
+    end
   end
 
   def test_short_card_for_closed_issue
@@ -668,17 +862,195 @@ class AgileBoardsControllerTest < ActionController::TestCase
     assert_response :success
     assert_select '.last_comment', :text => 'new comment!!!'
   end if Redmine::VERSION.to_s > '2.4'
-
-  
-  def test_card_for_new_issue
-  with_agile_settings "allow_create_card" => 1 do
-  statuses = IssueStatus.all
-  compatible_request :get, :index, {
-  "set_filter"=>"1", :project_id => @project_1, :f_status => statuses.map(&:id) }
-  assert_select '.add-issue input.new-card__input', 0
-  end
+  def test_wp_max_count_and_style
+    statuses = IssueStatus.pluck(:id)
+    compatible_request :get, :index, 'set_filter' => '1', :project_id => @project_1, :f_status => statuses, :wp => statuses.inject({}){ |r,s| r.merge!(s.to_s => '5') }
+    issues_for_status = Issue.where(:project_id => [@project_1] + Project.where(:parent_id => @project_1.id).to_a).group(:status_id).count
+    issues_for_status.each do |status_id, issues_count|
+      if issues_count > 5
+        assert_select "th.over_wp_limit[data-column-id='#{status_id}']"
+        assert_select "th.over_wp_limit[data-column-id='#{status_id}'] span.count span.over_wp_limit", :text => issues_count.to_s
+      end
+      assert_select "th[data-column-id='#{status_id}'] span.count", :text => "#{issues_count}/5"
+    end
   end if Redmine::VERSION.to_s > '2.4'
-  
+
+  def test_wp_min_count_and_style
+    statuses = IssueStatus.pluck(:id)
+    issues_for_status = Issue.where(:project_id => [@project_1] + Project.where(:parent_id => @project_1.id).to_a).group(:status_id).count
+    wp_limits = issues_for_status.inject({}) do |h, (k, v)|
+      h.merge!(k.to_s => "#{v.to_i + 1}-100")
+    end
+
+    compatible_request :get, :index, 'set_filter' => '1', :project_id => @project_1, :f_status => statuses, :wp => wp_limits
+    issues_for_status.each do | status_id, issues_count|
+      if issues_count > 0
+        assert_select "th.under_wp_limit[data-column-id='#{status_id}']"
+        assert_select "th.under_wp_limit[data-column-id='#{status_id}'] span.count span.under_wp_limit", :text => issues_count.to_s
+      end
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_card_for_new_issue
+    with_agile_settings 'allow_create_card' => 1 do
+      statuses = IssueStatus.all
+      issue = Issue.new(project: @project_1, tracker: Tracker.first)
+      compatible_request :get, :index, 'set_filter' => '1', :project_id => @project_1, :f_status => statuses.map(&:id)
+      assert_select '.add-issue input.new-card__input', issue.new_statuses_allowed_to.select { |s| !s.is_closed }.count
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_not_show_card_for_new_issue_without_permission
+    with_agile_settings 'allow_create_card' => 1 do
+      role = Role.find(2)
+      role.permissions << :veiw_issues
+      role.permissions << :view_agile_queries
+      role.permissions.delete(:add_issues)
+      role.save
+      @request.session[:user_id] = 3
+      statuses = IssueStatus.all
+      compatible_request :get, :index, 'set_filter' => '1', :project_id => @project_1, :f_status => statuses.map(&:id)
+      assert_select '.add-issue input.new-card__input', 0
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_create_issue_from_board
+    with_agile_settings 'allow_create_card' => 1 do
+      assert_difference 'Issue.count' do
+        compatible_request :post, :create_issue, :project_id => @project_1, :subject => 'new issue from board', :status_id => 1
+      end
+      assert_response :success
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_create_issue_from_scrum_board
+    sprint = AgileSprint.find(1)
+    with_agile_settings 'allow_create_card' => 1 do
+      assert_difference 'Issue.count' do
+        compatible_request :post, :create_issue, :project_id => @project_1,
+                                                 :subject => 'new issue from board',
+                                                 :sprint_id => sprint.id,
+                                                 :status_id => 1
+      end
+      assert_response :success
+      assert_equal Issue.last.agile_sprint, sprint
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_create_issue_from_board_with_empty_subject
+    with_agile_settings 'allow_create_card' => 1 do
+      assert_no_difference 'Issue.count' do
+        compatible_request :post, :create_issue, :project_id => @project_1, :subject => '', :status_id => 1
+      end
+      assert_response 403
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_create_issue_from_board_when_subject_consists_of_only_spaces
+    with_agile_settings "allow_create_card" => 1 do
+      assert_no_difference 'Issue.count' do
+        compatible_request :post, :create_issue, :project_id => @project_1, :subject => '   ', :status_id => 1
+      end
+      assert_response 403
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_create_issue_from_board_without_permission
+    with_agile_settings 'allow_create_card' => 1 do
+      role = Role.find(2)
+      role.permissions << :veiw_issues
+      role.permissions << :view_agile_queries
+      role.permissions.delete(:add_issues)
+      role.save
+      @request.session[:user_id] = 3
+      assert_no_difference 'Issue.count' do
+        compatible_request :post, :create_issue, :project_id => @project_1, :subject => 'new issue from board', :status_id => 1
+      end
+      assert_response 403
+    end
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_edit_issue_from_board_without_permission
+    role = Role.find(2)
+    role.permissions << :veiw_issues
+    role.permissions << :view_agile_queries
+    role.permissions.delete(:edit_issues)
+    role.save
+    @request.session[:user_id] = 3
+
+    compatible_request :get, :edit_issue, id: 1
+    assert_response 403
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_edit_issue_from_board_with_permission
+    role = Role.find(2)
+    role.permissions << :veiw_issues
+    role.permissions << :view_agile_queries
+    role.permissions << :edit_issues
+    role.save
+    issue = Issue.find(1)
+    @request.session[:user_id] = 3
+
+    compatible_xhr_request :get, :edit_issue, id: issue.id
+    assert_response 200
+    assert_match 'issue-edit-modal', response.body
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_update_issue_from_board_without_permission
+    role = Role.find(2)
+    role.permissions << :veiw_issues
+    role.permissions << :view_agile_queries
+    role.permissions.delete(:edit_issues)
+    role.save
+    @request.session[:user_id] = 3
+
+    compatible_request :get, :update_issue, id: 1
+    assert_response 403
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_update_issue_from_board_with_permission
+    role = Role.find(2)
+    role.permissions << :veiw_issues
+    role.permissions << :view_agile_queries
+    role.permissions << :edit_issues
+    role.save
+    issue = Issue.find(1)
+    old_attrs = issue.attributes.slice(:subject, :description)
+    @request.session[:user_id] = 3
+
+    compatible_xhr_request :post, :update_issue, id: issue.id, issue: { subject: 'test', description: 'descr' }
+    assert_response 200
+    issue.reload
+    assert_equal 'test', issue.subject
+    assert_equal 'descr', issue.description
+  ensure
+    issue.update(old_attrs)
+  end if Redmine::VERSION.to_s > '2.4'
+
+  def test_update_issue_from_board_with_recaled_sp
+    issue = Issue.find(2)
+    agile_data_attrs = issue.agile_data.attributes.except('id')
+    with_agile_settings 'story_points_on' => '1' do
+      role = Role.find(2)
+      role.permissions << :veiw_issues
+      role.permissions << :view_agile_queries
+      role.permissions << :edit_issues
+      role.save
+
+
+      @request.session[:user_id] = 3
+      @request.session[:agile_query] = {}
+      @request.session[:agile_query]
+      @request.session[:agile_query][:column_names] = [:id, :estimated_hours, :spent_hours, :story_points]
+
+      compatible_xhr_request :post, :update, id: issue.id, issue: { sprint_id: 1 }
+      assert_response 200
+      assert_match "data-story-points=\"2.0\"", response.body
+    end
+  ensure
+    issue.agile_data.update(agile_data_attrs)
+    @request.session.delete(:agile_query)
+  end if Redmine::VERSION.to_s > '2.4'
 
   def test_on_auto_assign_on_move
     with_agile_settings 'auto_assign_on_move' => '1' do

@@ -51,6 +51,7 @@ module RedmineAgile
         session[:agile_query] = {:id => @query.id, :project_id => @query.project_id}
         sort_clear
       elsif api_request? || params[:set_filter] || session[:agile_query].nil? || session[:agile_query][:project_id] != (@project ? @project.id : nil)
+        @query = AgileQuery.default_query(@project) || AgileQuery.default_query unless params[:set_filter]
         unless @query
           @query = AgileQuery.new(:name => "_", :project => @project)
           @query.build_from_params(params)
@@ -64,12 +65,72 @@ module RedmineAgile
         if session[:agile_query] && !session[:agile_query][:id] && !params[:project_id]
           @query = AgileQuery.new(get_query_attributes_from_session)
         end
+        @query ||= AgileQuery.default_query(@project) || AgileQuery.default_query
 
         @query ||= AgileQuery.find_by_id(session[:agile_query][:id]) if session[:agile_query][:id]
         @query ||= AgileQuery.new(get_query_attributes_from_session)
         @query.project = @project
         save_query_attribures_to_session(@query)
       end
+    end
+    def retrieve_versions_query(klass, session_key)
+      if !params[:query_id].blank?
+        @query = klass.where(project_id: @project).find(params[:query_id])
+        raise ::Unauthorized unless @query.visible?
+        @query.project = @project
+        session[session_key] = { id: @query.id, project_id: @query.project_id, c: @query.column_names }
+        sort_clear
+      elsif api_request? || params[:set_filter] || session[session_key].nil? || session[session_key][:project_id] != (@project ? @project.id : nil)
+        @query = klass.new(:name => '_')
+        @query.project = @project if @project
+        @query.build_from_params(params)
+
+        session[session_key] = { project_id: @query.project_id, filters: @query.filters, c: @query.column_names }
+      else
+        @query = klass.default_query(@project) || klass.default_query
+        return if @query
+
+        @query = klass.new(name: '_', filters: session[session_key][:filters])
+        @query.project = @project if @project
+        @query.build_from_params(session[session_key])
+      end
+    end
+    def agile_query_links(title, queries)
+      return '' if queries.empty?
+      # links to #index on issues/show
+      url_params = {:controller => 'agile_boards', :action => 'index', :project_id => @project}
+
+      content_tag('h3', title) + "\n" +
+        content_tag('ul',
+          queries.collect {|query|
+              css = 'query'
+              css << ' selected' if query == @query
+              content_tag('li', link_to(query.name, url_params.merge(:query_id => query), :class => css))
+            }.join("\n").html_safe,
+          :class => 'queries'
+        ) + "\n"
+    end
+
+    def link_to_persisted_agile_chart(query, project = @project)
+      link_to query.name,
+              { controller: 'agile_charts', action: 'show', query_id: query.id, project_id: project },
+              class: ('selected' if query.is_a?(AgileChartsQuery) && params[:query_id] && params[:query_id] == query.id.to_s)
+    end
+
+    def sidebar_agile_queries
+      # Select project specific queries and global queries
+      @sidebar_agile_queries ||=
+        AgileQuery.only_agile_queries
+          .visible
+          .where(@project.nil? ? ['project_id IS NULL'] : ['project_id IS NULL OR project_id = ?', @project.id])
+          .order("#{Query.table_name}.name ASC")
+    end
+
+    def render_sidebar_agile_queries
+      out = ''.html_safe
+      out << agile_query_links(l(:label_agile_my_boards), sidebar_agile_queries.select { |q| !q.is_public? })
+      out << agile_query_links(l(:label_agile_board_plural), sidebar_agile_queries.reject { |q| !q.is_public? })
+      out
     end
 
     def options_card_colors_for_select(selected, options={})
@@ -134,6 +195,9 @@ module RedmineAgile
                      filters: session[:agile_query][:filters],
                      group_by: session[:agile_query][:group_by],
                      column_names: session[:agile_query][:column_names],
+                     sprints_enabled: session[:agile_query][:sprints_enabled],
+                     backlog_column: session[:agile_query][:backlog_column],
+                     default_chart: session[:agile_query][:default_chart],
                      color_base: session[:agile_query][:color_base] }
       (attributes[:options] = session[:agile_query][:options] || {}) if Redmine::VERSION.to_s > '2.4'
       attributes
@@ -144,6 +208,9 @@ module RedmineAgile
                                 filters: query.filters,
                                 group_by: query.group_by,
                                 color_base: (query.respond_to?(:color_base) && query.color_base),
+                                sprints_enabled: (query.respond_to?(:sprints_enabled) && query.sprints_enabled.to_i > 0),
+                                backlog_column: (query.respond_to?(:backlog_column) && query.backlog_column),
+                                default_chart: (query.respond_to?(:default_chart) && query.default_chart),
                                 column_names: query.column_names }
       (session[:agile_query][:options] = query.options) if Redmine::VERSION.to_s > '2.4'
     end

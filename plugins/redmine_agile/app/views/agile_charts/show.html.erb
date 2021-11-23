@@ -39,6 +39,16 @@
     <p class="buttons">
       <%= link_to_function l(:button_apply), '$("#query_form").submit()', :class => 'icon icon-checked' %>
       <%= link_to l(:button_clear), { :set_filter => 1, :project_id => @project }, :class => 'icon icon-reload'  %>
+      <% if @query.new_record? %>
+        <% if User.current.allowed_to?(:add_agile_queries, @project, global: true) %>
+          <%= link_to_function l(:button_save),
+                               "$('#query_form').attr('action', '#{ @project ? new_project_agile_charts_query_path(@project) : new_agile_charts_query_path }').submit()",
+                               class: 'icon icon-save' %>
+        <% end %>
+      <% elsif @query.editable_by?(User.current) %>
+        <%= link_to l(:button_edit), edit_agile_charts_query_path(@query), class: 'icon icon-edit' %>
+        <%= delete_link agile_charts_query_path(@query) %>
+      <% end %>
     </p>
   </div>
 <% end %>

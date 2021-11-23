@@ -26,6 +26,8 @@ class AgileBoardsController < ApplicationController
   before_action :find_optional_project, only: [
                                                :index,
                                                :create_issue,
+                                               :backlog_load_more,
+                                               :backlog_autocomplete
                                               ]
   before_action :authorize, except: [:index, :edit_issue, :update_issue]
 
@@ -53,6 +55,8 @@ class AgileBoardsController < ApplicationController
   helper :timelog
   include RedmineAgile::AgileHelper
   helper :checklists if RedmineAgile.use_checklist?
+  helper :agile_sprints
+  include AgileSprintsHelper
 
   def index
     retrieve_agile_query
@@ -61,6 +65,10 @@ class AgileBoardsController < ApplicationController
       @issue_board = @query.issue_board
       @board_columns = @query.board_statuses
       @allowed_statuses = statuses_allowed_for_create
+      @swimlanes = @query.swimlanes
+      @closed_swimline_ids = params[:closed_swimline_ids] || []
+
+      @backlog_issues = @query.backlog_issues(params) if @query.backlog_column?
 
       respond_to do |format|
         format.html { render :template => 'agile_boards/index', :layout => !request.xhr? }
@@ -83,6 +91,16 @@ class AgileBoardsController < ApplicationController
     @issue.init_journal(User.current)
     @issue.safe_attributes = auto_assign_on_move? ? params[:issue].merge(:assigned_to_id => User.current.id) : params[:issue]
     checking_params = params.respond_to?(:to_unsafe_hash) ? params.to_unsafe_hash : params
+    if checking_params['issue'] && checking_params['issue']['sprint_id']
+      old_sp = @issue.agile_data.agile_sprint
+      new_sp = @issue.project.shared_agile_sprints.where(id: checking_params['issue']['sprint_id']).first
+      (render_error_message(l(:label_agile_action_not_available)); return false) if checking_params['issue']['sprint_id'].present? && new_sp.nil?
+      if old_sp != new_sp
+        @issue.agile_data.agile_sprint = new_sp
+        @issue.current_journal.details.build(property: 'attr', prop_key: 'agile_sprint', old_value: old_sp, value: new_sp)
+      end
+    end
+    checking_params['issue'].delete('status_id') if checking_params['issue'] && checking_params['issue']['status_id'].blank?
 
     saved = checking_params['issue'] && checking_params['issue'].inject(true) do |total, attribute|
       if @issue.attributes.include?(attribute.first)
@@ -93,6 +111,7 @@ class AgileBoardsController < ApplicationController
     end
     call_hook(:controller_agile_boards_update_before_save, { params: params, issue: @issue})
     @update = true
+    @version_board = params[:version_board].to_i > 0
     if saved && @issue.save
       call_hook(:controller_agile_boards_update_after_save, { :params => params, :issue => @issue})
       AgileData.transaction do
@@ -103,6 +122,16 @@ class AgileBoardsController < ApplicationController
       end if params[:positions]
 
       @inline_adding = params[:issue][:notes] || nil
+      if Redmine::VERSION.to_s > '2.4'
+        if current_status = @query.board_statuses.detect{ |st| st == @issue.status }
+          @error_msg =  l(:lable_agile_wip_limit_exceeded) if current_status.over_wp_limit?
+          @wp_class = current_status.wp_class
+        end
+
+        if @old_status = @query.board_statuses.detect{ |st| st == old_status }
+          @wp_class_for_old_status = @old_status.wp_class
+        end
+      end
 
       respond_to do |format|
         format.html { render(:partial => 'issue_card', :locals => {:issue => @issue}, :status => :ok, :layout => nil) }
@@ -116,6 +145,72 @@ class AgileBoardsController < ApplicationController
         }
       end
     end
+  end
+  def create_issue
+    raise ::Unauthorized unless User.current.allowed_to?(:add_issues, @project) && params[:subject].present?
+
+    @update = true
+    @issue = Issue.new(:subject => params[:subject].strip, :project => @project,
+                       :tracker => @project.trackers.first, :author => User.current, :status_id => params[:status_id])
+    if params[:sprint_id].present? && User.current.allowed_to?(:manage_sprints, @project)
+      @issue.agile_data.agile_sprint = @issue.project.shared_agile_sprints.where(id: params[:sprint_id]).first
+    end
+    begin
+      if @issue.save(:validate => false)
+        retrieve_agile_query_from_session
+        if Redmine::VERSION.to_s > '2.4'
+          if current_status = @query.board_statuses.detect{ |st| st == @issue.status }
+            @error_msg =  l(:lable_agile_wip_limit_exceeded) if current_status.over_wp_limit?
+            @wp_class = current_status.wp_class
+          end
+        end
+        @not_in_scope = !@query.issues.include?(@issue)
+        respond_to do |format|
+          format.html { render(:partial => 'issue_card', :locals => {:issue => @issue}, :status => :ok, :layout => nil) }
+        end
+      else
+        respond_to do |format|
+          messages = @issue.errors.full_messages
+          messages = [l(:text_agile_move_not_possible)] if messages.empty?
+          format.html {
+            render json: messages, status: :unprocessable_entity, layout: nil
+          }
+        end
+      end
+    rescue
+      respond_to do |format|
+        messages = @issue.errors.full_messages
+        messages = [l(:text_agile_create_issue_error)] if messages.empty?
+        format.html {
+          render json: messages, status: :unprocessable_entity, layout: nil
+        }
+      end
+    end
+  end
+
+  def edit_issue
+    raise ::Unauthorized unless User.current.allowed_to?(:edit_issues, @project)
+  end
+
+  def update_issue
+    raise ::Unauthorized unless User.current.allowed_to?(:edit_issues, @project)
+
+    retrieve_agile_query_from_session
+    return unless @issue.editable?
+    @issue.safe_attributes = params[:issue].slice(:subject, :description)
+    @issue.save
+  end
+
+  def backlog_load_more
+    prepare_backlog_data
+
+    render action: :load_more, layout: false
+  end
+
+  def backlog_autocomplete
+    prepare_backlog_data
+
+    render action: :autocomplete, layout: false
   end
 
   def issue_tooltip
@@ -158,5 +253,15 @@ class AgileBoardsController < ApplicationController
 
   def render_error_message(message)
     render json: [message], status: :unprocessable_entity
+  end
+  def prepare_backlog_data
+    retrieve_agile_query_from_session
+
+    backlog_issues = @query.backlog_issues(params)
+    paginator = @query.issues_paginator(backlog_issues, params[:page])
+    @issues = backlog_issues.offset(paginator.offset).limit(paginator.per_page).all
+    return unless paginator.next_page
+
+    @more_url = backlog_load_more_agile_boards_path(project_id: @query.project.try(:id), q: params[:q], page: paginator.next_page)
   end
 end

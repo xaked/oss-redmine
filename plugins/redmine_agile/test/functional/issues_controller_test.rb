@@ -45,6 +45,7 @@ class IssuesControllerTest < ActionController::TestCase
            :journals,
            :journal_details,
            :queries
+  RedmineAgile::TestCase.create_fixtures(Redmine::Plugin.find(:redmine_agile).directory + '/test/fixtures/', [:agile_data, :agile_sprints])
 
   def setup
     @project_1 = Project.find(1)
@@ -52,6 +53,27 @@ class IssuesControllerTest < ActionController::TestCase
     EnabledModule.create(:project => @project_1, :name => 'agile')
     EnabledModule.create(:project => @project_2, :name => 'agile')
     @request.session[:user_id] = 1
+  end
+  def test_get_index_with_colors
+    with_agile_settings "color_on" => "issue" do
+      issue = Issue.find(1)
+      issue.color = AgileColor::AGILE_COLORS[:red]
+      issue.save
+      compatible_request :get, :index
+      assert_response :success
+      assert_select 'tr#issue-1.issue.bk-red', 1
+    end
+  end
+
+  def test_post_issue_journal_color
+    with_agile_settings 'color_on' => 'issue' do
+      compatible_request :put, :update, :id => 1, :issue => { :agile_color_attributes => { :color => AgileColor::AGILE_COLORS[:red] } }
+      issue = Issue.find(1)
+      details = issue.journals.order(:id).last.details.last
+      assert issue.color
+      assert_equal 'color', details.prop_key
+      assert_equal AgileColor::AGILE_COLORS[:red], details.value
+    end
   end
 
   def test_new_issue_with_sp_value
@@ -121,5 +143,68 @@ class IssuesControllerTest < ActionController::TestCase
     end
   ensure
     session[:issue_query] = {}
+  end
+  def test_update_issue_story_points_save_sprint
+    @request.session[:user_id] = 2
+    with_agile_settings 'estimate_units' => 'story_points', 'story_points_on' => '1' do
+      issue = Issue.find(2)
+      assert issue.agile_sprint
+      compatible_request :put, :update, id: 2, issue: { agile_data_attributes: { agile_sprint_id: 0, story_points: 3 } }
+      assert_response :redirect
+      assert issue.reload.agile_sprint
+    end
+  end
+
+  def test_show_issue_form_with_story_points_select
+    with_agile_settings('sp_values' => [1,2,3],
+      'estimate_units' => 'story_points', 'story_points_on' => '1') do
+        compatible_request :get, :new, :project_id => 1
+        assert_response :success
+        assert_select 'select#issue_agile_data_attributes_story_points'
+    end
+  end
+
+  def test_dont_show_story_points_select_when_no_sp_values
+    with_agile_settings('sp_values' => [],
+      'estimate_units' => 'story_points', 'story_points_on' => '1') do
+        compatible_request :get, :new, :project_id => 1
+        assert_response :success
+        assert_select 'select#issue_agile_data_attributes_story_points', :count => 0
+    end
+  end
+
+  def test_bulk_update_for_sprint_with_story_points
+    issues = Issue.where(id: [1,2])
+    assert_equal [1, 2], issues.map { |issue| issue.agile_data.story_points }
+    with_agile_settings('sp_values' => [1,2,3], 'estimate_units' => 'story_points', 'story_points_on' => '1') do
+        compatible_request :post, :bulk_update, ids: [1,3], issue: { agile_data_attributes: { agile_sprint_id: '1', id: '' } }
+        assert_response :redirect
+        assert_equal [1, 2], issues.map { |issue| issue.agile_data.story_points }
+    end
+  end
+
+  def test_bulk_update_save_agile_data_for_copies
+    issue_ids = [1, 3]
+    issues = Issue.where(id: issue_ids)
+    assert_equal [1, 0], issues.map { |issue| issue.agile_data.story_points.to_i }
+    with_agile_settings('sp_values' => [1,2,3], 'estimate_units' => 'story_points', 'story_points_on' => '1') do
+        compatible_request :post, :bulk_update, { ids: issue_ids, link_copy: 1, copy: 1, copy_subtasks: 1 }
+        assert_response :redirect
+        assert_equal [1, 0], Issue.last(2).map { |issue| issue.agile_data.story_points.to_i }
+    end
+  end
+
+  def test_update_for_sprint_with_story_points
+    @request.session[:user_id] = 2 # User without manage_sprints permission
+    issue = Issue.find(2)
+    assert_equal 1, issue.agile_data.agile_sprint_id
+    assert_equal 2, issue.agile_data.story_points
+    with_agile_settings('sp_values' => [1,2,3], 'estimate_units' => 'story_points', 'story_points_on' => '1') do
+      compatible_request :put, :update, id: issue.id, issue: { agile_data_attributes: { story_points: '3', id: issue.agile_data.id } }
+      assert_response :redirect
+      issue.reload
+      assert_equal 1, issue.agile_data.agile_sprint_id
+      assert_equal 3, issue.agile_data.story_points
+    end
   end
 end

@@ -18,6 +18,7 @@
       <span class="fields">
           <% if User.current.allowed_to?(:edit_issues, @project, :global => true) && !@version_board %>
             <div class="quick-edit-card">
+              <%= link_to image_tag("/images/edit.png", alt: 'Edit' ), agile_edit_issue_path(id: issue.id), remote: true, class: 'quick-edit', title: l(:button_edit) if issue.editable? %>
               <%= link_to image_tag("/images/comment.png", alt: 'Comment'), '#', onclick: "showInlineComment(this, '#{j(agile_inline_comment_path(:id => issue))}'); return false;", title: l(:label_comment_add), class: 'add-comment' if RedmineAgile.allow_inline_comments? %>
             </div>
           <% end %>
@@ -142,6 +143,19 @@
     <% if Redmine::VERSION.to_s > '2.4' %>
       <script type="text/javascript">
         agileBoard.initDroppable();
+      </script>
+      <script type="text/javascript">
+        $("td.issue-status-col[data-id=<%= issue.status.id %>]").removeClass("over_wp_limit under_wp_limit");
+        $("td.issue-status-col[data-id=<%= issue.status.id %>]").addClass("<%= @wp_class %>");
+        <% if @old_status %>
+          $("td.issue-status-col[data-id=<%= @old_status.id %>]").removeClass("over_wp_limit under_wp_limit");
+          $("td.issue-status-col[data-id=<%= @old_status.id %>]").addClass("<%= @wp_class_for_old_status %>");
+        <% end %>
+      </script>
+    <% end %>
+    <% if @not_in_scope %>
+      <script type="text/javascript">
+        $(".issue-card[data-id='<%= issue.id %>']").toggle( "highlight" );
       </script>
     <% end %>
   <% end %>

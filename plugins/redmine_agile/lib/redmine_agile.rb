@@ -18,11 +18,13 @@
 # along with redmine_agile.  If not, see <http://www.gnu.org/licenses/>.
 
 
+require 'acts_as_colored/init'
 
 require 'redmine_agile/hooks/views_layouts_hook'
 require 'redmine_agile/hooks/views_issues_hook'
 require 'redmine_agile/hooks/views_versions_hook'
 require 'redmine_agile/hooks/controller_issue_hook'
+require 'redmine_agile/hooks/helper_issues_hook'
 require 'redmine_agile/patches/issue_patch'
 
 require 'redmine_agile/helpers/agile_helper'
@@ -30,6 +32,28 @@ require 'redmine_agile/helpers/agile_helper'
 require 'redmine_agile/charts/agile_chart'
 require 'redmine_agile/charts/burndown_chart'
 require 'redmine_agile/charts/work_burndown_chart'
+require 'redmine_agile/charts/velocity_chart'
+require 'redmine_agile/charts/cumulative_flow_chart'
+require 'redmine_agile/charts/trackers_cumulative_flow_chart'
+require 'redmine_agile/charts/burnup_chart'
+require 'redmine_agile/charts/work_burnup_chart'
+require 'redmine_agile/charts/cycle_time_chart'
+
+require 'redmine_agile/patches/issue_priority_patch'
+require 'redmine_agile/patches/issue_query_patch'
+require 'redmine_agile/patches/tracker_patch'
+require 'redmine_agile/patches/project_patch'
+require 'redmine_agile/hooks/views_context_menus_hook'
+require 'redmine_agile/hooks/views_projects_form_hook'
+
+require 'redmine_agile/utils/header_tree'
+
+require 'redmine_agile/patches/user_patch'
+require 'redmine_agile/hooks/views_users_form_hook'
+require 'redmine_agile/patches/queries_controller_patch' if Redmine::VERSION.to_s >= '3.4'
+
+require 'redmine_agile/patches/projects_helper_patch'
+require 'redmine_agile/patches/issues_controller_patch'
 require 'redmine_agile/charts/charts'
 require 'redmine_agile/patches/issue_drop_patch'
 
@@ -42,6 +66,7 @@ module RedmineAgile
   ESTIMATE_HOURS        = 'hours'.freeze
   ESTIMATE_STORY_POINTS = 'story_points'.freeze
   ESTIMATE_UNITS        = [ESTIMATE_HOURS, ESTIMATE_STORY_POINTS].freeze
+  COLOR_BASE = ['issue', 'tracker', 'priority', 'spent_time', 'user', 'project']
 
   class << self
     def time_reports_items_limit
@@ -90,12 +115,12 @@ module RedmineAgile
     end
 
     def use_colors?
-      false
-          end
+      COLOR_BASE.include?(color_base)
+                end
 
     def color_base
-      "none"
-          end
+      Setting.plugin_redmine_agile['color_on'] || 'none'
+                end
 
     def minimize_closed?
       Setting.plugin_redmine_agile['minimize_closed'].to_i > 0
@@ -108,10 +133,27 @@ module RedmineAgile
     def auto_assign_on_move?
       Setting.plugin_redmine_agile['auto_assign_on_move'].to_i > 0
     end
+    def color_prefix
+      'bk'
+    end
+
+    COLOR_BASE.each do |cb|
+      define_method :"#{cb}_colors?" do
+        color_base == cb
+      end
+    end
+
+    def sprints_on?
+      Setting.plugin_redmine_agile['sprints_on'].to_i > 0
+    end
+
+    def allow_ovelapping_sprints?
+      Setting.plugin_redmine_agile['ovelapping_sprints'].to_i > 0
+    end
 
     def status_colors?
-      false
-          end
+      Setting.plugin_redmine_agile['status_colors'].to_i > 0
+                end
 
     def hide_closed_issues_data?
       Setting.plugin_redmine_agile['hide_closed_issues_data'].to_i > 0
@@ -122,8 +164,8 @@ module RedmineAgile
     end
 
     def allow_create_card?
-      false
-    end
+      Setting.plugin_redmine_agile['allow_create_card'].to_i > 0
+          end
 
     def allow_inline_comments?
       Setting.plugin_redmine_agile['allow_inline_comments'].to_i > 0
@@ -131,6 +173,9 @@ module RedmineAgile
 
     def chart_future_data?
       Setting.plugin_redmine_agile['chart_future_data'].to_i > 0
+    end
+    def sp_values
+      Setting.plugin_redmine_agile['sp_values'].to_s.split(',').map{|x| x.strip.to_i}.uniq.delete_if{|x| x == 0}
     end
   end
 

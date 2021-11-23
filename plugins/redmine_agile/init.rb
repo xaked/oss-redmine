@@ -22,7 +22,7 @@ requires_redmine_crm version_or_higher: '0.0.43' rescue raise "\n\033[31mRedmine
 require 'redmine'
 
 AGILE_VERSION_NUMBER = '1.6.2'
-AGILE_VERSION_TYPE = "Light version"
+AGILE_VERSION_TYPE = 'PRO version'
 
 if ActiveRecord::VERSION::MAJOR >= 4 && !defined?(FCSV)
   require 'csv'
@@ -46,6 +46,10 @@ Redmine::Plugin.register :redmine_agile do
        { controller: 'agile_boards', action: 'index' },
        caption: :label_agile,
        if: Proc.new { User.current.allowed_to?(:view_agile_queries, nil, global: true) }
+  menu :project_menu, :agile_backlog, { controller: 'agile_versions', action: 'index' }, caption: :label_agile_board_backlog,
+                                                                                         after: :gantt,
+                                                                                         param: :project_id,
+       if: Proc.new { User.current.allowed_to?(:view_backlog, nil, global: true) }
   menu :project_menu, :agile, { controller: 'agile_boards', action: 'index' }, caption: :label_agile,
                                                                                after: :gantt,
                                                                                param: :project_id
@@ -65,6 +69,15 @@ Redmine::Plugin.register :redmine_agile do
                                                      :backlog_autocomplete],
                                       agile_queries: :index }, read: true
     permission :view_agile_charts, { agile_charts: [:show, :render_chart, :select_version_chart] }, read: true
+    permission :view_sprints, { }
+    permission :manage_sprints, {
+      agile_sprints: [:index, :new, :create, :edit, :update, :destroy],
+      agile_versions: [:sprints]
+    }
+  end
+  project_module :agile_backlog do
+    permission :view_backlog, { agile_versions: [:index, :update] }
+    permission :manage_backlog, { agile_boards: [:update, :issue_tooltip, :inline_comment, :backlog_load_more, :backlog_autocomplete] }
   end
 end
 

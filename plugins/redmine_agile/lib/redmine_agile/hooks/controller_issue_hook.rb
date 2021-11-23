@@ -35,12 +35,29 @@ module RedmineAgile
         return false unless context[:issue].project.module_enabled?(:agile)
         # return false unless context[:issue].color
         old_value = Issue.where(id: context[:issue].id).first || context[:issue]
+        old_issue_color = old_value.color.to_s
+        new_issue_color = context[:issue].color.to_s
+
+        if new_issue_color && !((new_issue_color == old_issue_color) || context[:issue].current_journal.blank?)
+          context[:issue].current_journal.details << JournalDetail.new(:property => 'attr',
+                                                                       :prop_key => 'color',
+                                                                       :old_value => old_issue_color,
+                                                                       :value => new_issue_color)
+        end
         # save changes for story points to journal
         old_sp = old_value.story_points
         new_sp = context[:issue].story_points
         if !((new_sp == old_sp) || context[:issue].current_journal.blank?)
           context[:issue].current_journal.details << JournalDetail.new(:property => 'attr',
           :prop_key => 'story_points',
+          :old_value => old_sp,
+          :value => new_sp)
+        end
+        old_sp = old_value.agile_data.try(:agile_sprint)
+        new_sp = context[:issue].agile_data.try(:agile_sprint)
+        if !((new_sp == old_sp) || context[:issue].current_journal.blank?)
+          context[:issue].current_journal.details << JournalDetail.new(:property => 'attr',
+          :prop_key => 'agile_sprint',
           :old_value => old_sp,
           :value => new_sp)
         end

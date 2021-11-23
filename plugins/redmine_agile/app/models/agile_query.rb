@@ -19,6 +19,9 @@
 
 class AgileQuery < Query
   include Redmine::SafeAttributes
+  include AgileQuery::AgileQueryTotalMethods
+  include AgileQuery::AgileQuerySwimlineMethods
+  include AgileQuery::AgileQueryBacklogMethods
 
   attr_reader :truncated
 
@@ -31,6 +34,17 @@ class AgileQuery < Query
     QueryColumn.new(:tracker, sortable: "#{Tracker.table_name}.position", groupable: true),
     QueryColumn.new(:estimated_hours, sortable: "#{Issue.table_name}.estimated_hours"),
     QueryColumn.new(:done_ratio, sortable: "#{Issue.table_name}.done_ratio"),
+    QueryColumn.new(:priority, sortable: "#{IssuePriority.table_name}.position", default_order: 'desc', groupable: true),
+    QueryColumn.new(:author, sortable: lambda { User.fields_for_order_statement('users') }, groupable: true),
+    QueryColumn.new(:category, sortable: "#{IssueCategory.table_name}.name", groupable: "#{Issue.table_name}.category_id"),
+    QueryColumn.new(:fixed_version, sortable: lambda { Version.fields_for_order_statement }, groupable: "#{Issue.table_name}.fixed_version_id"),
+    QueryColumn.new(:start_date, sortable: "#{Issue.table_name}.start_date"),
+    QueryColumn.new(:due_date, sortable: "#{Issue.table_name}.due_date"),
+    QueryColumn.new(:created_on, sortable: "#{Issue.table_name}.created_on"),
+    QueryColumn.new(:updated_on, sortable: "#{Issue.table_name}.updated_on"),
+    QueryColumn.new(:thumbnails, caption: :label_agile_board_thumbnails),
+    QueryColumn.new(:description),
+    QueryColumn.new(:sub_issues, caption: :label_agile_sub_issues),
     QueryColumn.new(:day_in_state, caption: :label_agile_day_in_state),
     QueryColumn.new(:parent, groupable: "#{Issue.table_name}.parent_id", sortable: "#{AgileData.table_name}.position", caption: :field_parent_issue),
     QueryColumn.new(:assigned_to, sortable: lambda { User.fields_for_order_statement }, groupable: "#{Issue.table_name}.assigned_to_id"),
@@ -44,6 +58,7 @@ class AgileQuery < Query
   def self.build_from_params(params, attributes = {})
     new(attributes).build_from_params(params)
   end
+  before_save :set_default_when_appropriate
 
   scope :visible, lambda { |*args|
     user = args.shift || User.current
@@ -68,6 +83,7 @@ class AgileQuery < Query
       scope.where("#{table_name}.visibility = ?", VISIBILITY_PUBLIC)
     end
   }
+  scope :only_agile_queries, -> { where(type: AgileQuery.name) }
 
   def initialize(attributes = nil, *args)
     super attributes
@@ -108,15 +124,19 @@ class AgileQuery < Query
   end
 
   def color_base
+    options[:color_base] || RedmineAgile.color_base
   end
 
   def color_base=(value)
+    options[:color_base] = value
   end
 
   def default_chart
+    options[:default_chart]
   end
 
   def default_chart=(value)
+    options[:default_chart] = value
   end
 
   def chart_unit
@@ -137,6 +157,61 @@ class AgileQuery < Query
   end
 
   def with_totals?
+    Redmine::VERSION.to_s > '3.2' && totalable_columns.any?
+  end
+  def sprints_enabled
+    options[:sprints_enabled] || options[:sprint_id]
+  end
+
+  def sprints_enabled=(value)
+    options[:sprints_enabled] = value
+  end
+
+  def sprint
+    @sprint ||= project.shared_agile_sprints.where(id: sprint_id).first
+  end
+
+  def sprint_id
+    return nil unless project
+    @sprint_id ||= options[:sprint_id] || project.active_sprint.try(:id) || project.shared_agile_sprints.available.first.try(:id)
+  end
+
+  def sprint_id=(val)
+    @sprint_id = val
+    options[:sprint_id] = val
+  end
+
+  def backlog_column
+    @backlog_column ||= options[:backlog_column]
+  end
+
+  def backlog_column=(val)
+    options[:backlog_column] = val
+  end
+
+  def is_default?
+    !!options[:is_default]
+  end
+
+  def is_default=(value)
+    options[:is_default] = !!value
+  end
+
+  def set_as_default
+    self.class.where(project_id: self.project_id).where(visibility: self.visibility).where("#{AgileQuery.table_name}.id <> ?", self.id).each do |query|
+      query.is_default = false
+      query.save
+    end if self.is_default?
+  end
+
+  def self.default_query(project = nil)
+    board_scope = self.visible
+    board_scope = board_scope.joins(:project).where(project_id: project)
+    default_query = board_scope.where("#{table_name}.visibility = ? AND #{table_name}.user_id = ?", VISIBILITY_PRIVATE, User.current).detect(&:is_default?)
+    default_query ||= board_scope.eager_load(user: :memberships).where("#{table_name}.visibility = ?", VISIBILITY_ROLES).detect(&:is_default?)
+    default_query ||= board_scope.where("#{table_name}.visibility = ?", VISIBILITY_PUBLIC).detect{|q| q.is_default?}
+    default_query.options[:sprints_enabled] = 1 if default_query && default_query.options[:sprints_enabled].nil? && RedmineAgile.sprints_on?
+    default_query
   end
 
   def build_from_params(params)
@@ -151,6 +226,16 @@ class AgileQuery < Query
     self.group_by = params[:group_by] || (params[:query] && params[:query][:group_by])
     self.column_names = params[:c] || (params[:query] && params[:query][:column_names])
     self.color_base = params[:color_base] || (params[:query] && params[:query][:color_base])
+    self.sprints_enabled = params[:sprints_enabled] || (params[:query] && params[:query][:sprints_enabled]) || (RedmineAgile.sprints_on? ? 1 : 0)
+    self.sprint_id = params[:sprint_id] || (params[:query] && params[:query][:sprint_id])
+
+    self.default_chart = params[:default_chart] || (params[:query] && params[:query][:default_chart])
+    self.chart_unit = params[:chart_unit] || (params[:query] && params[:query][:chart_unit])
+    self.totalable_names = params[:t] || (params[:query] && params[:query][:totalable_names]) || totalable_names if Redmine::VERSION.to_s > '3.2'
+
+    self.is_default = params[:is_default] || (params[:query] && params[:query][:is_default])
+    self.backlog_column = params[:backlog_column] || (params[:query] && params[:query][:backlog_column])
+    self.options = options.merge({ backlog_column: self.backlog_column })
     self.draw_relations = params[:draw_relations] || (params[:query] && params[:query][:draw_relations])
     if params[:f_status] || params[:wp]
       self.options = options.merge({ :f_status => params[:f_status], :wp => params[:wp] })
@@ -285,6 +370,7 @@ class AgileQuery < Query
     }
 
     add_available_filter "issue_id", type: :integer, label: :label_issue
+    add_available_filter 'description', type: :text
 
     if User.current.allowed_to?(:set_issues_private, nil, global: true) ||
       User.current.allowed_to?(:set_own_issues_private, nil, global: true)
@@ -504,6 +590,12 @@ class AgileQuery < Query
 
     scope = scope.preload(:custom_values)
     scope = scope.preload(:author) if has_column?(:author)
+    scope = scope.preload(:agile_color) if color_base == AgileColor::COLOR_GROUPS[:issue]
+    scope = scope.preload(:priority => :agile_color) if color_base == AgileColor::COLOR_GROUPS[:priority]
+
+    if color_base == AgileColor::COLOR_GROUPS[:tracker]
+      scope = scope.preload(:tracker => :agile_color)
+    end
 
     if has_column_name?(:checklists)
       scope = scope.preload(:checklists)
@@ -575,6 +667,28 @@ class AgileQuery < Query
           if RedmineAgile.use_story_points? && has_column_name?(:story_points)
             s.instance_variable_set "@story_points", self.issue_count_by_story_points[s.id].to_i
           end
+          if options && options[:wp]
+            wp_string = options[:wp][s.id.to_s]
+            if /(\d+)-?(\d*)/i =~ wp_string
+              s.instance_variable_set("@wp_max", $2.blank? ? $1.to_i : $2.to_i)
+              s.instance_variable_set("@wp_min", $1.to_i) if  !$1.blank? && !$2.blank?
+            end
+          end
+
+          def s.over_wp_limit?
+            return false if @wp_max.blank?
+            @wp_max.to_i < @issue_count
+          end
+
+          def s.under_wp_limit?
+            return false if @wp_min.blank?
+            @wp_min.to_i > @issue_count
+          end
+
+          def s.wp_class
+            return 'over_wp_limit' if over_wp_limit?
+            'under_wp_limit' if under_wp_limit?
+          end
           s
         end
       else
@@ -633,8 +747,10 @@ class AgileQuery < Query
   def issue_board
     @truncated = RedmineAgile.board_items_limit <= issue_scope.count
     all_issues = self.issues.limit(RedmineAgile.board_items_limit).sorted_by_rank
-    all_issues.group_by{|i| [i.status_id]}
-      end
+    grouped_issues = grouped? ? all_issues.group_by{|i| [i.status_id, i.send("#{self.group_by_column.name}_id")]} : all_issues.group_by{|i| [i.status_id]}
+    grouped_issues.values.each{|x|x.sort!{|a,b| a.position.to_i <=> b.position.to_i}} if grouped?
+    grouped_issues
+          end
 
   def statement
     if values_for('fixed_version_id') == ['current_version'] && project
@@ -665,6 +781,12 @@ class AgileQuery < Query
 
     p_ids = [project.id]
     p_ids += project.descendants.select { |sub| sub.module_enabled?('agile') }.map(&:id) if Setting.display_subprojects_issues?
+    if sprints_enabled.to_i > 0
+      sprint_p_ids = Issue.joins(:agile_data)
+                         .where("#{AgileData.table_name}.agile_sprint_id = ?", sprint_id).pluck(:project_id).uniq
+      p_ids |= sprint_p_ids
+
+    end
 
     "#{Project.table_name}.id IN (#{p_ids.join(',')})"
   end
@@ -673,11 +795,22 @@ class AgileQuery < Query
     return @agile_scope if @agile_scope
 
     @agile_scope = base_agile_query_scope
+    @agile_scope = @agile_scope.where("#{AgileData.table_name}.agile_sprint_id = ?", sprint_id) if sprints_enabled.to_i > 0 && sprint_id.to_i > 0
     @agile_scope
   end
 
   def project_statement
+    unless sprints_enabled.to_i > 0
       return super
+    end
+    return @project_statement if @project_statement
+    return "1=1" unless project
+
+    project_ids = [project.id]
+    project_ids += project.descendants.map(&:id) if Setting.display_subprojects_issues?
+    shared_project_ids = project.shared_agile_sprints.map(&:shared_projects).map { |projects| projects.map(&:id) }.flatten.uniq
+
+    @project_statement = "#{Project.table_name}.id IN (%s)" % (project_ids | shared_project_ids).join(',')
   end
 
   def current_version
@@ -686,5 +819,8 @@ class AgileQuery < Query
     versions = project.shared_versions.open.where("LOWER(#{Version.table_name}.name) NOT LIKE LOWER(?)", 'backlog')
     versions -= versions.select(&:completed?).reverse
     @current_version = versions.to_a.uniq.sort.first
+  end
+  def set_default_when_appropriate
+    set_as_default if options[:is_default]
   end
 end

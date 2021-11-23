@@ -51,6 +51,7 @@ class AgileChartsController < ApplicationController
     retrieve_charts_query
     @query.date_to ||= Date.today
     @issues = @query.issues
+    @agile_sprint = AgileSprint.where(id: @query.sprint_id).first if @query.sprint_id
     respond_to do |format|
       format.html
     end
@@ -69,6 +70,7 @@ class AgileChartsController < ApplicationController
     else
       retrieve_charts_query
       @issues = Issue.visible
+      @issues = @issues.eager_load(:agile_data) if @query.filters.has_key?('sprint_id')
       @issues = @issues.joins(:fixed_version) if @query.filters.keys.include?('version_status')
       @issues = @issues.where(@query.statement)
       options = { date_from: @query.date_from,
@@ -117,6 +119,7 @@ class AgileChartsController < ApplicationController
                                        filters: @query.filters,
                                        group_by: @query.group_by,
                                        column_names: @query.column_names,
+                                       sprint_id: @query.sprint_id,
                                        date_from: @query.date_from,
                                        date_to: @query.date_to,
                                        interval_size: @query.interval_size,
@@ -128,6 +131,7 @@ class AgileChartsController < ApplicationController
                                     filters: session[:agile_charts_query][:filters] || session[:agile_query][:filters],
                                     group_by: session[:agile_charts_query][:group_by],
                                     column_names: session[:agile_charts_query][:column_names],
+                                    sprint_id: session[:agile_charts_query][:sprint_id],
                                     date_from: session[:agile_charts_query][:date_from],
                                     date_to: session[:agile_charts_query][:date_to],
                                     interval_size: session[:agile_charts_query][:interval_size],

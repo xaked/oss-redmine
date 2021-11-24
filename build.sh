@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=4.2.3.3;
+version=4.2.3.4;
 org=ossua;
 app=it-redmine;
 
